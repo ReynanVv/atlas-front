@@ -1,49 +1,52 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
+// theme.ts
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const brand = {
+  orange: '#FF7A1A',       // primária (texto/ícones de destaque)
+  orangeDark: '#FF4D00',   // fim do degradê / estados ativos
+  orangeSoft: '#FF8A3D',   // início do degradê
+  black: '#111213',        // fundo principal
+  surface: '#1A1A1A',      // cartões/inputs
+  white: '#FFFFFF',
+  text: '#ECEDEE',         // texto padrão no dark
+  textMuted: '#9BA1A6',    // texto secundário no dark
+  textDark: '#11181C',     // texto padrão no light
+  textDarkMuted: '#687076' // texto secundário no light
+};
+
+export const Gradients = {
+  primary: [brand.orangeSoft, brand.orangeDark] as const, // para botões/cta
+};
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: brand.textDark,
+    textMuted: brand.textDarkMuted,
+    background: '#FFFFFF',
+    surface: '#F5F6F7',
+    tint: brand.orange,            // cor de destaque (links/ícones ativos)
+    icon: brand.textDarkMuted,
+    tabIconDefault: brand.textDarkMuted,
+    tabIconSelected: brand.orange,
+    border: '#E6E8EB',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: brand.text,
+    textMuted: brand.textMuted,
+    background: brand.black,
+    surface: brand.surface,
+    tint: brand.orange,            // destaque laranja no dark
+    icon: brand.textMuted,
+    tabIconDefault: brand.textMuted,
+    tabIconSelected: brand.orange,
+    border: '#232629',
   },
 };
 
+// (mantém seu bloco Fonts como está)
 export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
+  ios: { sans: 'system-ui', serif: 'ui-serif', rounded: 'ui-rounded', mono: 'ui-monospace' },
+  default: { sans: 'normal', serif: 'serif', rounded: 'normal', mono: 'monospace' },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
