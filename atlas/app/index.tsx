@@ -66,7 +66,7 @@ const WelcomeScreen: React.FC = () => {
 
           {/* Botão secundário */}
           <Pressable
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('/login')}
             style={styles.secondaryBtn}
           >
             <Text style={styles.secondaryLabel}>Entrar</Text>
