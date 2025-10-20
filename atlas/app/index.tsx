@@ -44,7 +44,7 @@ const WelcomeScreen: React.FC = () => {
         {/* CTA area (cards arredondados com degradê) */}
         <View style={styles.ctaCard}>
           <Pressable
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('/select-profile')}
             style={{ borderRadius: 28, overflow: 'hidden' }}
           >
             <LinearGradient
