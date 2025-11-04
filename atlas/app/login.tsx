@@ -9,6 +9,7 @@ import {
   Keyboard,
 } from "react-native";
 import React, { useState } from "react";
+import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -23,9 +24,28 @@ export default function ModalScreen() {
   const tint = useThemeColor({}, "tint");
   const border = useThemeColor({}, "border");
 
+  // TODO: replace these placeholders with real data from your auth/user service
+  let ehAluno = true;
+  let ehPersonal = false;
+
+  const router = useRouter();
+
   function handleLogin() {
-    // Placeholder: implementar lógica de login
-    console.log("Login com", { email, password });
+    // Normally you'd authenticate here and fetch the user's roles.
+    // Based on the roles, navigate to the correct screen.
+    if (ehAluno && ehPersonal) {
+      // User has both roles — show the selector screen
+      router.replace(({ pathname: '/select-profile-login' } as unknown) as any);
+    } else if (ehPersonal) {
+      // Only personal/trainer
+      router.replace(({ pathname: '/personal/home' } as unknown) as any);
+    } else if (ehAluno) {
+      // Only aluno/student
+      router.replace(({ pathname: '/aluno/home' } as unknown) as any);
+    } else {
+      // No role assigned — keep on login and optionally show an error
+      console.warn('Usuário sem perfil associado');
+    }
   }
 
   function handleGoogleSignIn() {

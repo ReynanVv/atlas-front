@@ -17,11 +17,11 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="select-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="select-profile-login" options={{ headerShown: false }} />
         <Stack.Screen name="register-aluno" options={{ headerShown: false }} />
-  <Stack.Screen name="register-personal" options={{ headerShown: false }} />
-  <Stack.Screen name="aluno" options={{ headerShown: false }} />
-  <Stack.Screen name="aluno/home" options={{ headerShown: false }} />
-  <Stack.Screen name="aluno/workout" options={{ headerShown: false }} />
+        <Stack.Screen name="register-personal" options={{ headerShown: false }} />
+        <Stack.Screen name="aluno" options={{ headerShown: false }} />
+        <Stack.Screen name="personal" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* esconder header do modal para remover título e botão de voltar */}
         <Stack.Screen

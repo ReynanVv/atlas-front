@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 
-export default function AlunoIndex() {
+export default function PersonalIndex() {
   const router = useRouter();
 
   React.useEffect(() => {
