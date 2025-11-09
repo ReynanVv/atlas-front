@@ -6,10 +6,11 @@ export default function AlunoLayout() {
     <Stack>
       {/* app/aluno/index.tsx */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      {/* app/aluno/home.tsx */}
-      <Stack.Screen name="home" options={{ headerShown: false }} />
+      {/* app/aluno/personais.tsx */}
+      <Stack.Screen name="personais" options={{ headerShown: false }} />
       {/* app/aluno/workout.tsx */}
       <Stack.Screen name="workout" options={{ headerShown: false, title: 'Treino' }} />
+      <Stack.Screen name="personal/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

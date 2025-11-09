@@ -41,7 +41,7 @@ export default function ModalScreen() {
       router.replace(({ pathname: '/personal/home' } as unknown) as any);
     } else if (ehAluno) {
       // Only aluno/student
-      router.replace(({ pathname: '/aluno/home' } as unknown) as any);
+      router.replace(({ pathname: '/aluno/personais' } as unknown) as any);
     } else {
       // No role assigned — keep on login and optionally show an error
       console.warn('Usuário sem perfil associado');
