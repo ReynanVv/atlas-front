@@ -1,4 +1,3 @@
-// app/(auth)/welcome.tsx  (ou substitua seu LoginScreen.tsx)
 import React from 'react';
 import {
   SafeAreaView,
@@ -27,7 +26,6 @@ const WelcomeScreen: React.FC = () => {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
-        {/* Top bar com logo e ícones fictícios */}
         <Image
           source={require('../assets/images/new-logo-atlas.png')}
           style={styles.logo}
@@ -44,7 +42,7 @@ const WelcomeScreen: React.FC = () => {
         {/* CTA area (cards arredondados com degradê) */}
         <View style={styles.ctaCard}>
           <Pressable
-            onPress={() => router.push('/select-profile')}
+            onPress={() => router.push('/select-profile-register')}
             style={{ borderRadius: 28, overflow: 'hidden' }}
           >
             <LinearGradient
@@ -74,7 +72,7 @@ const WelcomeScreen: React.FC = () => {
 
           {/* Esqueci a senha */}
           <Pressable
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('/login')}
             style={{ marginTop: 16 }}
           >
             <Text style={styles.link}>Esqueci a senha</Text>
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 36,
-    marginHorizontal: -24, // encosta nas bordas como no mock
+    marginHorizontal: -24,
   },
   primaryBtn: {
     borderRadius: 28,
