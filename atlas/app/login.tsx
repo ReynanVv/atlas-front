@@ -110,9 +110,9 @@ export default function ModalScreen() {
           </View>
         </TouchableOpacity>
 
-        <Link href="/" dismissTo style={styles.link}>
+        <Link href="/select-profile-register" dismissTo style={styles.link}>
           <ThemedText type="link" style={{ fontWeight: "700" }}>
-            Já tenho uma conta
+            Criar uma conta
           </ThemedText>
         </Link>
       </Pressable>

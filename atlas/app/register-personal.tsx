@@ -1,30 +1,37 @@
-import React, { useState } from 'react';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TextInput, TouchableOpacity, View, Image, Keyboard, Pressable } from 'react-native';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { useRouter } from 'expo-router';
+import React, { useState } from "react";
+import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/themed-text";
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
+  Keyboard,
+  Pressable,
+} from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { Link, useRouter } from "expo-router";
 
 export default function RegisterPersonal() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [company, setCompany] = useState('');
-  const text = useThemeColor({}, 'text');
-  const textMuted = useThemeColor({}, 'textMuted');
-  const surface = useThemeColor({}, 'surface');
-  const tint = useThemeColor({}, 'tint');
-  const border = useThemeColor({}, 'border');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [company, setCompany] = useState("");
+  const text = useThemeColor({}, "text");
+  const textMuted = useThemeColor({}, "textMuted");
+  const surface = useThemeColor({}, "surface");
+  const tint = useThemeColor({}, "tint");
+  const border = useThemeColor({}, "border");
   const router = useRouter();
 
   function handleRegister() {
-    // Placeholder: implementar lógica real de cadastro
-    console.log('Cadastrar personal', { name, email, company });
-    router.push('/(tabs)/home');
+    console.log("Cadastrar personal", { name, email, company });
+    router.push("/personal/home");
   }
 
   function handleGoogleSignIn() {
-    console.log('Entrar com Google (personal)');
+    console.log("Entrar com Google (personal)");
   }
 
   return (
@@ -36,7 +43,10 @@ export default function RegisterPersonal() {
           value={name}
           onChangeText={setName}
           placeholder="Nome"
-          style={[styles.input, { backgroundColor: surface, borderColor: border, color: text }]}
+          style={[
+            styles.input,
+            { backgroundColor: surface, borderColor: border, color: text },
+          ]}
           placeholderTextColor={textMuted}
         />
 
@@ -44,7 +54,10 @@ export default function RegisterPersonal() {
           value={company}
           onChangeText={setCompany}
           placeholder="Empresa / Profissão"
-          style={[styles.input, { backgroundColor: surface, borderColor: border, color: text }]}
+          style={[
+            styles.input,
+            { backgroundColor: surface, borderColor: border, color: text },
+          ]}
           placeholderTextColor={textMuted}
         />
 
@@ -54,7 +67,10 @@ export default function RegisterPersonal() {
           placeholder="Email"
           keyboardType="email-address"
           autoCapitalize="none"
-          style={[styles.input, { backgroundColor: surface, borderColor: border, color: text }]}
+          style={[
+            styles.input,
+            { backgroundColor: surface, borderColor: border, color: text },
+          ]}
           placeholderTextColor={textMuted}
         />
 
@@ -63,7 +79,10 @@ export default function RegisterPersonal() {
           onChangeText={setPassword}
           placeholder="Senha"
           secureTextEntry
-          style={[styles.input, { backgroundColor: surface, borderColor: border, color: text }]}
+          style={[
+            styles.input,
+            { backgroundColor: surface, borderColor: border, color: text },
+          ]}
           placeholderTextColor={textMuted}
         />
 
@@ -77,51 +96,75 @@ export default function RegisterPersonal() {
 
         <TouchableOpacity
           onPress={handleGoogleSignIn}
-          style={[styles.googleButton, { borderColor: border, backgroundColor: surface }]}
+          style={[
+            styles.googleButton,
+            { borderColor: border, backgroundColor: surface },
+          ]}
           activeOpacity={0.8}
         >
           <View style={styles.googleContent}>
             <Image
-              source={{ uri: 'https://www.gstatic.com/marketing-cms/assets/images/d5/dc/cfe9ce8b4425b410b49b7f2dd3f3/g.webp=s96-fcrop64=1,00000000ffffffff-rw' }}
+              source={{
+                uri: "https://www.gstatic.com/marketing-cms/assets/images/d5/dc/cfe9ce8b4425b410b49b7f2dd3f3/g.webp=s96-fcrop64=1,00000000ffffffff-rw",
+              }}
               style={styles.googleIcon}
             />
             <ThemedText type="defaultSemiBold">Entrar com Google</ThemedText>
           </View>
         </TouchableOpacity>
+        <Link href="/login" dismissTo style={styles.link}>
+          <ThemedText type="link" style={{ fontWeight: "700" }}>
+            Já tenho uma conta
+          </ThemedText>
+        </Link>
       </Pressable>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
   input: {
-    width: '100%',
+    width: "100%",
     height: 48,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
     marginTop: 12,
   },
   registerButton: {
-    width: '100%',
+    width: "100%",
     height: 48,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
   },
   googleButton: {
-    width: '100%',
+    width: "100%",
     height: 48,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 12,
     borderWidth: 1,
   },
-  googleContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  googleContent: { flexDirection: "row", alignItems: "center", gap: 8 },
   googleIcon: { width: 20, height: 20, borderRadius: 4 },
-  pressable: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  pressable: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  link: {
+    marginTop: 15,
+    paddingVertical: 15,
+  },
 });

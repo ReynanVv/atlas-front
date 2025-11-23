@@ -16,7 +16,7 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="select-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="select-profile-register" options={{ headerShown: false }} />
         <Stack.Screen name="select-profile-login" options={{ headerShown: false }} />
         <Stack.Screen name="register-aluno" options={{ headerShown: false }} />
         <Stack.Screen name="register-personal" options={{ headerShown: false }} />
