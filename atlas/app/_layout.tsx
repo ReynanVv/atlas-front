@@ -22,8 +22,6 @@ export default function RootLayout() {
         <Stack.Screen name="register-personal" options={{ headerShown: false }} />
         <Stack.Screen name="aluno" options={{ headerShown: false }} />
         <Stack.Screen name="personal" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* esconder header do modal para remover título e botão de voltar */}
         <Stack.Screen
           name="login"
           options={{ presentation: "modal", headerShown: false }}

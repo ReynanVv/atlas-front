@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, FlatList, Pressable, Image } from "react-native";
 import { ThemedView } from "@/components/themed-view";
 import { ThemedText } from "@/components/themed-text";
+import { useRouter } from "expo-router";
 
 // Mock de personais trainers para exibição
 const PERSONAL_TRAINERS = [
@@ -21,7 +22,6 @@ const PERSONAL_TRAINERS = [
     avatar: require("@/assets/images/react-logo.png"),
   },
 ];
-import { useRouter } from "expo-router";
 
 export default function EscolherPersonal() {
   const router = useRouter();
