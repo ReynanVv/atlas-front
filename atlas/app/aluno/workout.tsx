@@ -1,9 +1,8 @@
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView , Pressable } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
-import { Pressable } from 'react-native';
 
 export const options = { headerShown: true };
 
