@@ -25,15 +25,11 @@ export default function RegisterAluno() {
   const router = useRouter();
 
   function handleRegister() {
-    // Placeholder: implementação real de registro
     console.log("Cadastrar aluno", { name, email });
-    // navegar para a home do Aluno após cadastro
-    // cast temporário para evitar erro de tipagem até o TS reconhecer a rota
     router.replace({ pathname: "/aluno/home" } as unknown as any);
   }
 
   function handleGoogleSignIn() {
-    // Placeholder: integrar Google Sign-In
     console.log("Entrar com Google (registro)");
   }
 

@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link , useRouter } from "expo-router";
 import {
   StyleSheet,
   TextInput,
@@ -9,7 +9,6 @@ import {
   Keyboard,
 } from "react-native";
 import React, { useState } from "react";
-import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
