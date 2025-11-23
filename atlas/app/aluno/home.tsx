@@ -3,10 +3,10 @@ import { ThemedView } from "@/components/themed-view";
 import { ThemedText } from "@/components/themed-text";
 import { StyleSheet } from "react-native";
 
-export default function PersonaisPlaceholder() {
+export default function AlunoHomePlaceholder() {
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">Personais (placeholder)</ThemedText>
+      <ThemedText type="title">Home (placeholder)</ThemedText>
     </ThemedView>
   );
 }
