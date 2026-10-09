@@ -52,41 +52,54 @@ function StatCard({ icon: Icon, label, value, detail }) {
 }
 
 function Login({ onEnter }) {
-  return <div className="login-page">
-    <section className="login-showcase">
-      <div className="showcase-top"><Logo/><Badge tone="light">Protótipo conceitual</Badge></div>
-      <div className="showcase-copy">
-        <span className="eyebrow"><Sparkles size={15}/> Treino conectado</span>
-        <h1>Treino bom é treino que <em>evolui com você.</em></h1>
-        <p>Aluno e treinador no mesmo lugar: prescrição, execução, histórico, mensagens e evolução em uma experiência simples.</p>
-        <div className="showcase-pills">
-          <span><Check size={15}/> Rotina clara</span><span><Check size={15}/> Progresso visível</span><span><Check size={15}/> Feedback próximo</span>
-        </div>
+  const [mode, setMode] = useState('welcome')
+
+  return <div className="auth-screen">
+    <div className="auth-decor auth-decor-left"></div>
+    <div className="auth-decor auth-decor-right"></div>
+
+    <div className="auth-content">
+      <div className="auth-top">
+        <div className="auth-logo"><Logo/></div>
+        <div className="auth-dots"><span className="active"></span><span></span><span></span></div>
       </div>
-      <div className="mini-workout-card">
-        <div><div className="pulse-dot"></div><small>Treino de hoje</small><strong>Upper A — Peito & Costas</strong></div>
-        <div className="mini-ring">72<span>%</span></div>
-      </div>
-    </section>
-    <section className="login-panel">
-      <div className="login-box">
-        <div className="mobile-login-logo"><Logo/></div>
-        <span className="eyebrow">Bem-vindo de volta</span>
-        <h2>Entre na sua conta</h2>
-        <p className="muted">Acesse seus treinos, alunos e evolução.</p>
+
+      <section className="auth-hero">
+        <span className="auth-kicker">TREINE. ACOMPANHE. EVOLUA.</span>
+        <h1>Sustente sua força.<br/><em>Supere seus limites.</em></h1>
+        <p>Treinos, evolução e contato com seu treinador em uma experiência direta e feita para manter sua constância.</p>
+      </section>
+
+      {mode === 'welcome' ? <section className="auth-card">
+        <button className="auth-primary" onClick={() => setMode('signup')}>Inscreva-se gratuitamente</button>
+        <div className="auth-divider"><span></span><strong>ou</strong><span></span></div>
+        <button className="auth-outline" onClick={() => setMode('login')}>Entrar</button>
+        <button className="auth-forgot" onClick={() => setMode('login')}>Esqueci a senha</button>
+        <small className="auth-brandline">Atlas · treino conectado</small>
+      </section> : <section className="auth-card auth-form-card">
+        <button className="auth-back" onClick={() => setMode('welcome')}><ArrowLeft size={17}/> Voltar</button>
+        <span className="eyebrow">{mode === 'signup' ? 'Comece agora' : 'Bem-vindo de volta'}</span>
+        <h2>{mode === 'signup' ? 'Crie sua conta' : 'Entre na sua conta'}</h2>
+        <p>{mode === 'signup' ? 'Leva menos de um minuto.' : 'Acesse seus treinos, alunos e evolução.'}</p>
+
         <label className="field-label">E-mail</label>
-        <div className="input-wrap"><Mail size={18}/><input defaultValue="demo@atlas.fit" /></div>
+        <div className="input-wrap"><Mail size={18}/><input defaultValue={mode === 'login' ? 'demo@atlas.fit' : ''} placeholder="voce@email.com" /></div>
+        {mode === 'signup' && <>
+          <label className="field-label">Nome</label>
+          <div className="input-wrap"><UserRound size={18}/><input placeholder="Seu nome"/></div>
+        </>}
         <label className="field-label">Senha</label>
-        <div className="input-wrap"><Lock size={18}/><input type="password" defaultValue="12345678" /></div>
-        <button className="primary-btn full" onClick={onEnter}>Entrar na demonstração <ChevronRight size={18}/></button>
-        <div className="divider"><span>ou continue com</span></div>
-        <div className="social-row">
-          <button className="social-btn"><span className="google-g">G</span> Google</button>
-          <button className="social-btn"><Apple size={18} fill="currentColor"/> Apple</button>
+        <div className="input-wrap"><Lock size={18}/><input type="password" defaultValue={mode === 'login' ? '12345678' : ''} placeholder="••••••••" /></div>
+
+        <button className="auth-primary auth-submit" onClick={onEnter}>{mode === 'signup' ? 'Criar conta' : 'Entrar na demonstração'} <ChevronRight size={18}/></button>
+        <div className="auth-divider"><span></span><strong>ou</strong><span></span></div>
+        <div className="auth-social-row">
+          <button><span className="google-g">G</span> Google</button>
+          <button><Apple size={18} fill="currentColor"/> Apple</button>
         </div>
-        <p className="signup-copy">Ainda não possui conta? <button>Cadastre-se</button></p>
-      </div>
-    </section>
+        {mode === 'login' && <button className="auth-forgot">Esqueci a senha</button>}
+      </section>}
+    </div>
   </div>
 }
 
