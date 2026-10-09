@@ -23,10 +23,10 @@ const exercises = [
 ]
 
 const students = [
-  { name: 'Marina Costa', plan: 'Upper/Lower 4x', adherence: 92, last: 'Hoje, 07:40', trend: '+12%', initials: 'MC' },
-  { name: 'Lucas Nunes', plan: 'Full Body 3x', adherence: 81, last: 'Ontem, 19:12', trend: '+8%', initials: 'LN' },
-  { name: 'Bianca Melo', plan: 'Hipertrofia 5x', adherence: 76, last: 'Ontem, 06:55', trend: '+15%', initials: 'BM' },
-  { name: 'Diego Ramos', plan: 'Recondicionamento', adherence: 64, last: '03 out.', trend: '+4%', initials: 'DR' },
+  { name: 'Marina Costa', model: 'AB', adherence: 92, last: 'Hoje, 07:40', trend: '+12%', initials: 'MC' },
+  { name: 'Lucas Nunes', model: 'FULLBODY', adherence: 81, last: 'Ontem, 19:12', trend: '+8%', initials: 'LN' },
+  { name: 'Bianca Melo', model: 'ABC', adherence: 76, last: 'Ontem, 06:55', trend: '+15%', initials: 'BM' },
+  { name: 'Diego Ramos', model: 'AB', adherence: 64, last: '03 out.', trend: '+4%', initials: 'DR' },
 ]
 
 function Logo({ compact = false }) {
@@ -139,6 +139,12 @@ function BottomNav({ profile, page, setPage }) {
 }
 
 function StudentHome({ setPage }) {
+  const [routineOpen, setRoutineOpen] = useState(false)
+  const [routineDays, setRoutineDays] = useState([1, 3, 5])
+  const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']
+  const names = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+  const toggleDay = i => setRoutineDays(v => v.includes(i) ? v.filter(x => x !== i) : [...v, i].sort())
+
   return <div className="page-stack">
     <section className="welcome-row">
       <div><span className="eyebrow">Terça-feira, 6 de outubro</span><h1>Boa noite, Amanda 👋</h1><p>Seu treino está pronto. Hoje é dia de construir consistência.</p></div>
@@ -161,20 +167,25 @@ function StudentHome({ setPage }) {
       </div>
     </section>
 
-    <div className="section-title"><div><h2>Sua semana</h2><p>Rotina planejada pelo seu treinador.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
-    <div className="week-strip">
-      {['S','T','Q','Q','S','S','D'].map((d,i) => <div key={i} className={i === 1 ? 'day active' : i === 0 ? 'day done' : 'day'}>
-        <span>{d}</span><strong>{5+i}</strong><i>{i === 0 ? <Check size={13}/> : i === 1 ? <Dumbbell size={13}/> : ''}</i>
-      </div>)}
-    </div>
+    <div className="section-title"><div><h2>Próximos treinos</h2><p>O que vem pela frente.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
+    <section className="panel no-pad upcoming-main">
+      <div className="compact-list">
+        {studentWorkouts.slice(1).map((w,i) => <button className="compact-row upcoming-row" key={i}>
+          <div className="date-box"><strong>{i === 0 ? '08' : '10'}</strong><small>OUT</small></div>
+          <div><strong>{w.name}</strong><small>{w.duration} · {w.intensity}</small></div>
+          <Badge tone="light">{w.status}</Badge><ChevronRight size={18}/>
+        </button>)}
+      </div>
+    </section>
 
     <div className="grid-2">
-      <section className="panel">
-        <div className="panel-head"><div><h3>Próximos treinos</h3><p>O que vem pela frente.</p></div><CalendarDays size={20}/></div>
-        <div className="compact-list">{studentWorkouts.slice(1).map((w,i) => <div className="compact-row" key={i}>
-          <div className="date-box"><strong>{i === 0 ? '08' : '10'}</strong><small>OUT</small></div>
-          <div><strong>{w.name}</strong><small>{w.duration} · {w.intensity}</small></div><ChevronRight size={18}/>
-        </div>)}</div>
+      <section className="panel routine-card">
+        <div className="panel-head"><div><h3>Minha rotina</h3><p>Você escolhe os dias disponíveis; o treinador distribui seus treinos.</p></div><CalendarDays size={20}/></div>
+        <div className="routine-days">
+          {labels.map((d,i) => <span key={i} className={routineDays.includes(i) ? 'active' : ''}>{d}</span>)}
+        </div>
+        <div className="routine-copy"><strong>{routineDays.length} dias por semana</strong><span>{routineDays.map(i => names[i]).join(' · ') || 'Nenhum dia selecionado'}</span></div>
+        <button className="secondary-btn compact" onClick={() => setRoutineOpen(true)}>Editar disponibilidade</button>
       </section>
       <section className="panel">
         <div className="panel-head"><div><h3>Resumo do mês</h3><p>Consistência em outubro.</p></div><Trophy size={20}/></div>
@@ -184,6 +195,14 @@ function StudentHome({ setPage }) {
         </div>
       </section>
     </div>
+
+    {routineOpen && <div className="modal-backdrop" onClick={() => setRoutineOpen(false)}><div className="standard-modal" onClick={e => e.stopPropagation()}>
+      <button className="modal-close" onClick={() => setRoutineOpen(false)}><X size={18}/></button>
+      <div className="modal-icon"><CalendarDays size={23}/></div><h2>Escolha sua rotina</h2>
+      <p>Selecione os dias em que você consegue treinar. Seu treinador usará essa disponibilidade para definir quais treinos serão executados em cada dia.</p>
+      <div className="weekday-picker routine-picker">{labels.map((d,i)=><button key={i} className={routineDays.includes(i)?'active':''} onClick={()=>toggleDay(i)}>{d}</button>)}</div>
+      <button className="primary-btn full" onClick={() => setRoutineOpen(false)}>Salvar disponibilidade <Check size={17}/></button>
+    </div></div>}
   </div>
 }
 
@@ -276,78 +295,145 @@ function Messages({ trainer = false }) {
 }
 
 function TrainerDashboard({ setPage }) {
+  const [period, setPeriod] = useState('Dia')
   return <div className="page-stack"><section className="welcome-row">
     <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, Amanda 👋</h1><p>Acompanhe quem está treinando e onde sua atenção faz mais diferença.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
   <div className="stats-grid"><StatCard icon={UsersRound} label="Alunos ativos" value="24" detail="+3 neste mês"/><StatCard icon={ListChecks} label="Treinos hoje" value="18" detail="12 já concluídos"/><StatCard icon={Activity} label="Aderência média" value="84%" detail="+6% vs. mês anterior"/></div>
   <div className="grid-2 dashboard-grid">
-    <section className="panel"><div className="panel-head"><div><h3>Atividade de hoje</h3><p>Execuções dos seus alunos.</p></div><button className="text-btn" onClick={()=>setPage('students')}>Ver todos</button></div>
-      <div className="activity-list">{students.slice(0,3).map((s,i)=><div className="activity-row" key={s.name}><Avatar initials={s.initials} size="sm"/><div><strong>{s.name}</strong><small>{i===0?'Finalizou Upper A':'Treino programado para hoje'}</small></div><Badge tone={i===0?'green':'light'}>{i===0?'Concluído':'Pendente'}</Badge></div>)}</div>
+    <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Execuções e programações dos seus alunos.</p></div><button className="text-btn" onClick={()=>setPage('students')}>Ver todos</button></div>
+      <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
+      <div className="activity-list">{students.slice(0,3).map((s,i)=><div className="activity-row" key={s.name}><Avatar initials={s.initials} size="sm"/><div><strong>{s.name}</strong><small>{i===0?'Finalizou Upper A':period === 'Dia' ? 'Treino programado para hoje' : `Atividade registrada no período: ${period.toLowerCase()}`}</small></div><Badge tone={i===0?'green':'light'}>{i===0?'Concluído':'Pendente'}</Badge></div>)}</div>
     </section>
     <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alunos com queda de frequência.</p></div><Bell size={19}/></div>
       <div className="attention-list"><div><Avatar initials="DR" size="sm"/><span><strong>Diego Ramos</strong><small>2 treinos não realizados nesta semana</small></span><ChevronRight size={18}/></div><div><Avatar initials="LN" size="sm"/><span><strong>Lucas Nunes</strong><small>Comentou dor no ombro após o treino</small></span><ChevronRight size={18}/></div></div>
     </section>
   </div>
   <section className="panel"><div className="panel-head"><div><h3>Visão geral dos alunos</h3><p>Aderência aos treinos nos últimos 30 dias.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
-    <div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Plano</span><span>Aderência</span><span>Último treino</span><span>Evolução</span><span></span></div>
-    {students.map(s=><div className="student-table-row" key={s.name}><div><Avatar initials={s.initials} size="sm"/><strong>{s.name}</strong></div><span>{s.plan}</span><div className="adherence"><div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><strong>{s.adherence}%</strong></div><span>{s.last}</span><Badge>{s.trend}</Badge><ChevronRight size={18}/></div>)}</div>
+    <div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Modelo</span><span>Aderência</span><span>Último treino</span><span>Evolução</span><span></span></div>
+    {students.map(s=><div className="student-table-row" key={s.name}><div><Avatar initials={s.initials} size="sm"/><strong>{s.name}</strong></div><span>{s.model}</span><div className="adherence"><div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><strong>{s.adherence}%</strong></div><span>{s.last}</span><Badge>{s.trend}</Badge><ChevronRight size={18}/></div>)}</div>
   </section>
   </div>
 }
 
 function Students({ setPage }) {
   const [invite, setInvite] = useState(false)
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Planos, frequência e evolução em uma única visão.</p></div><button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button></section>
-    <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos os planos <ChevronDown size={15}/></button><button className="filter">Aderência <ChevronDown size={15}/></button></div>
-    <div className="student-card-grid">{students.map((s,i)=><article className="student-card" key={s.name}><div className="student-card-top"><Avatar initials={s.initials}/><div><h3>{s.name}</h3><p>{s.plan}</p></div><button><MoreHorizontal size={19}/></button></div>
-      <div className="student-kpis"><div><span>Aderência</span><strong>{s.adherence}%</strong></div><div><span>Último treino</span><strong>{s.last.split(',')[0]}</strong></div><div><span>Volume</span><strong>{i===0?'+12%':i===1?'+8%':i===2?'+15%':'+4%'}</strong></div></div>
-      <div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><div className="student-actions"><button onClick={()=>setPage('studentDetail')}>Ver evolução</button><button onClick={()=>setPage('builder')}>Criar treino <ChevronRight size={15}/></button></div>
+  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Modelos, frequência e evolução em uma única visão.</p></div><button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button></section>
+    <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos os modelos <ChevronDown size={15}/></button><button className="filter">Aderência <ChevronDown size={15}/></button></div>
+    <div className="student-card-grid">{students.map((s)=><article className="student-card clickable" key={s.name} onClick={()=>setPage('studentDetail')}><div className="student-card-top"><Avatar initials={s.initials}/><div><h3>{s.name}</h3><p>Modelo {s.model}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
+      <div className="student-kpis"><div><span>Aderência</span><strong>{s.adherence}%</strong></div><div><span>Último treino</span><strong>{s.last.split(',')[0]}</strong></div><div><span>Volume</span><strong>{s.trend}</strong></div></div>
+      <div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><div className="student-actions"><button onClick={(e)=>{e.stopPropagation();setPage('studentDetail')}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
     </article>)}</div>
     {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setInvite(false)}><X size={18}/></button><div className="modal-icon"><Share2 size={23}/></div><h2>Convidar novo aluno</h2><p>Compartilhe este link. Ao criar a conta, a pessoa será vinculada ao seu perfil de treinador.</p><div className="copy-link"><span>atlas.fit/convite/amanda-7f3a</span><button>Copiar</button></div><button className="primary-btn full">Compartilhar convite <Share2 size={17}/></button></div></div>}
   </div>
 }
 
 function StudentDetail({ setPage }) {
- return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
-  <section className="student-profile-head"><Avatar initials="MC" size="lg"/><div><Badge>Aluno ativo</Badge><h1>Marina Costa</h1><p>Upper/Lower 4x · vinculada desde 12 mar. 2026</p></div><div className="profile-actions"><button className="secondary-btn"><MessageCircle size={17}/> Mensagem</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
-  <div className="stats-grid"><StatCard icon={Activity} label="Aderência" value="92%" detail="últimos 30 dias"/><StatCard icon={Dumbbell} label="Volume total" value="21.840 kg" detail="+12% no período"/><StatCard icon={Flame} label="Sequência" value="8 treinos" detail="melhor marca: 11"/></div>
-  <div className="grid-2"><section className="panel"><div className="panel-head"><div><h3>Progressão de carga</h3><p>Supino reto · últimas 8 semanas</p></div><Badge>+11%</Badge></div><div className="line-chart"><svg viewBox="0 0 500 190" preserveAspectRatio="none"><path d="M0,165 C80,150 110,160 155,130 S250,120 300,95 S410,76 500,46" fill="none" stroke="#497b50" strokeWidth="4" strokeLinecap="round"/></svg></div></section>
-  <section className="panel"><div className="panel-head"><div><h3>Anotações recentes</h3><p>Feedbacks registrados pela aluna.</p></div></div><div className="notes-list"><div><span>04 out.</span><p>“Última série do agachamento ficou bem pesada, mas sem perder a técnica.”</p></div><div><span>30 set.</span><p>“Supino mais estável. Sem desconforto no ombro.”</p></div></div></section></div>
- </div>
+  const [tab,setTab]=useState('workouts')
+  const [exporting,setExporting]=useState(null)
+  const [target,setTarget]=useState('Bianca Melo')
+  const prescribed = [
+    {name:'Upper A — Peito & Costas', model:'AB', routine:'Seg · Qui', status:'Ativo'},
+    {name:'Lower A — Quadríceps', model:'AB', routine:'Ter · Sex', status:'Ativo'},
+  ]
+  const history = [
+    {date:'06 out.',name:'Upper A — Peito & Costas',duration:'54 min',status:'Realizado'},
+    {date:'03 out.',name:'Lower A — Quadríceps',duration:'58 min',status:'Realizado'},
+    {date:'30 set.',name:'Upper A — Peito & Costas',duration:'51 min',status:'Realizado'},
+    {date:'27 set.',name:'Lower A — Quadríceps',duration:'—',status:'Não realizado'},
+  ]
+  return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
+    <section className="student-profile-head"><Avatar initials="MC" size="lg"/><div><Badge>Aluno ativo</Badge><h1>Marina Costa</h1><p>Modelo AB · vinculada desde 12 mar. 2026</p></div><div className="profile-actions"><button className="secondary-btn"><MessageCircle size={17}/> Mensagem</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
+    <div className="stats-grid"><StatCard icon={Activity} label="Aderência" value="92%" detail="últimos 30 dias"/><StatCard icon={Dumbbell} label="Volume total" value="21.840 kg" detail="+12% no período"/><StatCard icon={Flame} label="Sequência" value="8 treinos" detail="melhor marca: 11"/></div>
+
+    <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico de treinos</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
+
+    {tab==='workouts' && <section className="panel no-pad"><div className="detail-workout-list">{prescribed.map((w,i)=><div className="detail-workout-row" key={w.name}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>Modelo {w.model} · {w.routine}</small></div><Badge>{w.status}</Badge><button className="secondary-btn compact" onClick={()=>setExporting(w)}>Exportar para outro aluno <Share2 size={15}/></button><ChevronRight size={17}/></div>)}</div></section>}
+
+    {tab==='history' && <section className="panel no-pad"><div className="history-list">{history.map((h,i)=><div className="history-row detail-history" key={i}><div className="history-date">{h.date.toUpperCase()}</div><div className="history-main"><strong>{h.name}</strong><small>{h.duration}</small></div><Badge tone={h.status==='Realizado'?'green':'gray'}>{h.status}</Badge><ChevronRight size={18}/></div>)}</div></section>}
+
+    {tab==='progress' && <div className="grid-2"><section className="panel"><div className="panel-head"><div><h3>Progressão de carga</h3><p>Supino reto · últimas 8 semanas</p></div><Badge>+11%</Badge></div><div className="line-chart"><svg viewBox="0 0 500 190" preserveAspectRatio="none"><path d="M0,165 C80,150 110,160 155,130 S250,120 300,95 S410,76 500,46" fill="none" stroke="#497b50" strokeWidth="4" strokeLinecap="round"/></svg></div></section>
+    <section className="panel"><div className="panel-head"><div><h3>Anotações recentes</h3><p>Feedbacks registrados pela aluna.</p></div></div><div className="notes-list"><div><span>04 out.</span><p>“Última série do agachamento ficou bem pesada, mas sem perder a técnica.”</p></div><div><span>30 set.</span><p>“Supino mais estável. Sem desconforto no ombro.”</p></div></div></section></div>}
+
+    {exporting && <div className="modal-backdrop" onClick={()=>setExporting(null)}><div className="standard-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setExporting(null)}><X size={18}/></button><div className="modal-icon"><Share2 size={23}/></div><h2>Exportar treino</h2><p>Copie <strong>{exporting.name}</strong> para outro aluno. A cópia poderá ser editada antes de ser prescrita.</p><label className="field-label export-label">Aluno de destino</label><select className="export-target" value={target} onChange={e=>setTarget(e.target.value)}>{students.filter(s=>s.name!=='Marina Costa').sort((a,b)=>a.name.localeCompare(b.name)).map(s=><option key={s.name}>{s.name}</option>)}</select><button className="primary-btn full" onClick={()=>setExporting(null)}>Exportar para {target} <Share2 size={17}/></button></div></div>}
+  </div>
 }
 
 function ExerciseLibrary({ setPage }) {
   const [query,setQuery]=useState('')
   const filtered=exercises.filter(e=>e.name.toLowerCase().includes(query.toLowerCase()))
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>Encontre exercícios por grupo muscular, categoria ou intensidade.</p></div><button className="primary-btn"><Video size={18}/> Adicionar vídeo próprio</button></section>
-    <div className="toolbar"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar exercício por nome"/></div><button className="filter">Grupo muscular <ChevronDown size={15}/></button><button className="filter">Intensidade <ChevronDown size={15}/></button></div>
-    <div className="exercise-library-grid">{filtered.map(ex=><article className="library-card" key={ex.id}><div className="library-video"><Dumbbell size={34}/><button><Play size={17} fill="currentColor"/></button></div><div className="library-copy"><div><Badge tone="light">{ex.group}</Badge><Badge tone="gray">{ex.category}</Badge></div><h3>{ex.name}</h3><p>Execução guiada com foco em amplitude, controle e estabilidade.</p><div><span><Zap size={14}/> {ex.intensity}</span><button onClick={()=>setPage('builder')}><Plus size={15}/> Usar</button></div></div></article>)}</div>
+  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>Encontre exercícios por nome, grupo muscular ou categoria.</p></div><button className="primary-btn"><Video size={18}/> Adicionar vídeo próprio</button></section>
+    <div className="toolbar"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar exercício por nome"/></div><button className="filter">Grupo muscular <ChevronDown size={15}/></button><button className="filter">Categoria <ChevronDown size={15}/></button></div>
+    <div className="exercise-library-grid">{filtered.map(ex=><article className="library-card" key={ex.id}><div className="library-video"><Dumbbell size={34}/><button><Play size={17} fill="currentColor"/></button></div><div className="library-copy"><div><Badge tone="light">{ex.group}</Badge><Badge tone="gray">{ex.category}</Badge></div><h3>{ex.name}</h3><p>Execução guiada com foco em amplitude, controle e estabilidade.</p><div><span>Biblioteca Atlas</span><button onClick={()=>setPage('builder')}><Plus size={15}/> Usar</button></div></div></article>)}</div>
   </div>
 }
 
 function Workouts({ setPage }) {
- return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Crie modelos reutilizáveis ou personalize uma rotina para cada aluno.</p></div><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></section>
-  <div className="tabs"><button className="active">Treinos prescritos</button><button>Templates</button></div>
-  <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Intensidade</span><span>Status</span><span></span></div>
-  {[['Upper/Lower — A','Marina Costa','Seg · Qui','Moderada','Ativo'],['Full Body — A','Lucas Nunes','Seg · Qua · Sex','Alta','Ativo'],['Hipertrofia — Push','Bianca Melo','Ter · Sex','Alta','Ativo'],['Recondicionamento 01','Diego Ramos','Ter · Sáb','Leve','Pausado']].map((w,i)=><div className="workout-table-row" key={i}><div><span className="workout-icon"><Dumbbell size={18}/></span><strong>{w[0]}</strong></div><span>{w[1]}</span><span>{w[2]}</span><span>{w[3]}</span><Badge tone={w[4]==='Ativo'?'green':'gray'}>{w[4]}</Badge><button><MoreHorizontal size={18}/></button></div>)}</div></section>
- </div>
+  const [query,setQuery]=useState('')
+  const [status,setStatus]=useState('Todos')
+  const rows = [
+    {name:'Upper/Lower — A',student:'Marina Costa',routine:'Seg · Qui',model:'AB',status:'Ativo'},
+    {name:'Full Body — A',student:'Lucas Nunes',routine:'Seg · Qua · Sex',model:'FULLBODY',status:'A vencer'},
+    {name:'Hipertrofia — Push',student:'Bianca Melo',routine:'Ter · Sex',model:'ABC',status:'Vencido'},
+    {name:'Recondicionamento 01',student:'Diego Ramos',routine:'Ter · Sáb',model:'AB',status:'Pausado'},
+  ]
+  const filtered = rows.filter(w => {
+    const text = `${w.name} ${w.student} ${w.model}`.toLowerCase()
+    return text.includes(query.toLowerCase()) && (status==='Todos' || w.status===status)
+  })
+  const toneFor = s => s==='Ativo'?'green':s==='A vencer'?'light':'gray'
+
+  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Crie modelos reutilizáveis ou personalize uma rotina para cada aluno.</p></div><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></section>
+    <div className="tabs"><button className="active">Treinos prescritos</button><button>Templates</button></div>
+    <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno ou modelo"/></div><label className="status-filter"><span>Status</span><select value={status} onChange={e=>setStatus(e.target.value)}><option>Todos</option><option>Ativo</option><option>A vencer</option><option>Vencido</option><option>Pausado</option></select></label></div>
+    <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
+    {filtered.map((w,i)=><div className="workout-table-row" key={i}><div><span className="workout-icon"><Dumbbell size={18}/></span><strong>{w.name}</strong></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
+    {!filtered.length && <div className="empty-state">Nenhum treino encontrado com esses filtros.</div>}</div></section>
+  </div>
 }
 
 function WorkoutBuilder({ setPage }) {
- const [items,setItems]=useState(exercises.slice(0,3))
- const remove=id=>setItems(v=>v.filter(e=>e.id!==id))
- return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-  <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Defina o treino, organize os exercícios e ajuste a rotina antes de salvar.</p></section>
-  <div className="builder-layout"><div className="builder-main">
-    <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid"><label><span>Aluno</span><select defaultValue="Marina Costa"><option>Marina Costa</option><option>Lucas Nunes</option><option>Bianca Melo</option></select></label><label><span>Base</span><select><option>Começar do zero</option><option>Template — Upper A</option><option>Template — Lower A</option></select></label><label className="span-2"><span>Nome do treino</span><input defaultValue="Upper A — Peito & Costas"/></label><label><span>Intensidade geral</span><select defaultValue="Moderada"><option>Leve</option><option>Moderada</option><option>Alta</option></select></label><label><span>Tempo estimado</span><input defaultValue="52 min"/></label><label className="span-2"><span>Observações gerais</span><textarea defaultValue="Foco em progressão de carga e controle da fase excêntrica."/></label></div></section>
-    <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Arraste conceitualmente para reorganizar a ordem.</p></div><button className="secondary-btn compact"><Plus size={16}/> Adicionar exercício</button></div>
-      <div className="builder-exercises">{items.map((ex,idx)=><div className="builder-exercise" key={ex.id}><span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span><div className="builder-ex-main"><strong>{ex.name}</strong><small>{ex.group}</small></div><label><small>Séries</small><input defaultValue={ex.sets}/></label><label><small>Reps</small><input defaultValue={ex.reps}/></label><label><small>Carga</small><input defaultValue={ex.weight}/></label><label><small>Descanso</small><input defaultValue={ex.rest}/></label><button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button></div>)}</div>
-    </section>
+  const [items,setItems]=useState(exercises.slice(0,3))
+  const [studentQuery,setStudentQuery]=useState('Marina Costa')
+  const [studentOpen,setStudentOpen]=useState(false)
+  const [selectedStudent,setSelectedStudent]=useState('Marina Costa')
+  const [workoutName,setWorkoutName]=useState('Upper A — Peito & Costas')
+  const [model,setModel]=useState('AB')
+  const remove=id=>setItems(v=>v.filter(e=>e.id!==id))
+  const sortedStudents=useMemo(()=>[...students].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[ ])
+  const matches=sortedStudents.filter(s=>s.name.toLowerCase().includes(studentQuery.toLowerCase()))
+  const availability={
+    'Marina Costa':[0,1,3,4],
+    'Lucas Nunes':[0,2,4],
+    'Bianca Melo':[1,2,4,5],
+    'Diego Ramos':[1,5],
+  }
+  const dayLabels=['S','T','Q','Q','S','S','D']
+  const dayNames=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
+  const selectedDays=availability[selectedStudent] || []
+  const templateNames=['Upper A — Peito & Costas','Lower A — Quadríceps','Upper B — Ombros & Braços','Full Body — Base','Push — Hipertrofia']
+
+  const chooseStudent = name => {setSelectedStudent(name);setStudentQuery(name);setStudentOpen(false)}
+
+  return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
+    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Escolha o aluno, aproveite um treino já criado e ajuste os exercícios antes de salvar.</p></section>
+    <div className="builder-layout"><div className="builder-main">
+      <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
+        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>{setStudentQuery(studentOpen?'':selectedStudent);setStudentOpen(v=>!v)}}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(s=><button type="button" key={s.name} className={selectedStudent===s.name?'active':''} onClick={()=>chooseStudent(s.name)}><Avatar initials={s.initials} size="xs"/><span>{s.name}</span>{selectedStudent===s.name&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
+        <label className="span-2"><span>Nome do treino / treino já criado</span><select value={workoutName} onChange={e=>setWorkoutName(e.target.value)}>{templateNames.map(t=><option key={t}>{t}</option>)}</select><small className="helper-text">Selecione um treino previamente criado para usar como base e editar antes de salvar.</small></label>
+        <label><span>Tempo estimado</span><input defaultValue="52 min"/></label>
+        <label><span>Posição na rotina</span><select><option>Treino A</option><option>Treino B</option><option>Treino C</option></select></label>
+        <label className="span-2"><span>Observações gerais</span><textarea defaultValue="Intensidade moderada. Foco em progressão de carga e controle da fase excêntrica."/></label>
+      </div></section>
+      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Arraste conceitualmente para reorganizar a ordem.</p></div><button className="secondary-btn compact"><Plus size={16}/> Adicionar exercício</button></div>
+        <div className="builder-exercises">{items.map((ex,idx)=><div className="builder-exercise" key={ex.id}><span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span><div className="builder-ex-main"><strong>{ex.name}</strong><small>{ex.group}</small></div><label><small>Séries</small><input defaultValue={ex.sets}/></label><label><small>Reps</small><input defaultValue={ex.reps}/></label><label><small>Carga</small><input defaultValue={ex.weight}/></label><label><small>Descanso</small><input defaultValue={ex.rest}/></label><button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button></div>)}</div>
+      </section>
+    </div>
+    <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Essa rotina foi escolhida por {selectedStudent}.</p></div><Lock size={18}/></div><div className="weekday-picker readonly">{dayLabels.map((d,i)=><span key={i} className={selectedDays.includes(i)?'active':''}>{d}</span>)}</div><div className="availability-summary"><strong>{selectedDays.length} dias disponíveis</strong><span>{selectedDays.map(i=>dayNames[i]).join(' · ')}</span></div><div className="info-note">O aluno define quando consegue treinar. Você define quais treinos (A, B, C...) serão distribuídos dentro dessa disponibilidade.</div></section>
+    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Séries totais</span><strong>{items.reduce((a,b)=>a+b.sets,0)}</strong></div><button className="primary-btn full" onClick={()=>setPage('workouts')}>Salvar e prescrever <Check size={17}/></button><button className="text-btn centered">Salvar como template</button></section></aside></div>
   </div>
-  <aside className="builder-side"><section className="panel"><h3>Rotina de execução</h3><p>Defina quando esse treino aparece para o aluno.</p><div className="weekday-picker">{['S','T','Q','Q','S','S','D'].map((d,i)=><button key={i} className={i===0||i===3?'active':''}>{d}</button>)}</div><label className="field-label">Início da rotina</label><div className="input-wrap plain"><CalendarDays size={17}/><input defaultValue="06/10/2026"/></div><label className="field-label">Lembrete</label><div className="input-wrap plain"><Bell size={17}/><input defaultValue="18:00"/></div></section>
-  <section className="panel summary-panel"><h3>Resumo</h3><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Séries totais</span><strong>{items.reduce((a,b)=>a+b.sets,0)}</strong></div><div><span>Volume estimado</span><strong>4.860 kg</strong></div><button className="primary-btn full" onClick={()=>setPage('workouts')}>Salvar e prescrever <Check size={17}/></button><button className="text-btn centered">Salvar como template</button></section></aside></div>
- </div>
 }
 
 function AppShell() {
