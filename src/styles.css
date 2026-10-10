@@ -385,3 +385,92 @@ button{color:inherit}
   .auth-primary,.auth-outline{min-height:56px;font-size:16px}
   .auth-form-card h2{font-size:28px}
 }
+
+
+/* Stronger lime accents — 09/10/2026 */
+.date-box{
+  background:#B8E400;
+  color:#0B1B3A;
+  border:1px solid #A6CB00;
+}
+.date-box small{color:#35415A}
+
+.routine-days span.active,
+.weekday-picker.readonly span.active{
+  background:#B8E400;
+  color:#0B1B3A;
+  border-color:#A6CB00;
+  box-shadow:0 5px 16px rgba(184,228,0,.20);
+}
+
+.routine-card .secondary-btn{
+  background:#B8E400;
+  border-color:#A6CB00;
+  color:#0B1B3A;
+  font-weight:800;
+}
+.routine-card .secondary-btn:hover{
+  background:#C7F000;
+  border-color:#B8E400;
+}
+
+.panel-head > svg{
+  color:#0B1B3A;
+  background:#B8E400;
+  border-radius:10px;
+  padding:7px;
+  width:36px;
+  height:36px;
+}
+
+.progress-ring{
+  background:conic-gradient(#B8E400 0 86%,#E9ECF2 86% 100%);
+  box-shadow:0 8px 20px rgba(184,228,0,.16);
+}
+
+.stat-icon,
+.modal-icon,
+.workout-icon{
+  background:#B8E400;
+  color:#0B1B3A;
+}
+
+.day.active{
+  border-color:#B8E400;
+  background:#F3F8D7;
+  box-shadow:0 4px 14px rgba(184,228,0,.12);
+}
+.day.done i{
+  background:#B8E400;
+  color:#0B1B3A;
+}
+
+.set-check{
+  background:#B8E400;
+  border-color:#A6CB00;
+  color:#0B1B3A;
+}
+
+.exercise-card.completed .exercise-index{
+  background:#B8E400;
+  color:#0B1B3A;
+}
+
+.badge-green,
+.badge:not(.badge-light):not(.badge-gray){
+  background:#EAF3BC;
+  color:#0B1B3A;
+  border:1px solid #D6E58A;
+}
+
+.weekday-picker button.active{
+  background:#B8E400;
+  color:#0B1B3A;
+  border-color:#A6CB00;
+}
+
+@media (max-width:680px){
+  .date-box{
+    box-shadow:0 4px 12px rgba(184,228,0,.12);
+  }
+}
