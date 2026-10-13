@@ -486,6 +486,6 @@ function AppShell() {
   </div>
 }
 
-export default function App() {
+// live backend integration\nexport default function App() {
   return <AppShell/>
 }
