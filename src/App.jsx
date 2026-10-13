@@ -505,6 +505,22 @@ function LiveLogin({onLogin}){
   </div></div>
 }
 
+function TrainerFlow({token,user,onLogout}){
+  const [students,setStudents]=useState([]),[invites,setInvites]=useState([]),[workouts,setWorkouts]=useState([])
+  const [busy,setBusy]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState('')
+  const load=async()=>{try{const [a,b,c]=await Promise.all([liveApi('/trainer/students',{token}),liveApi('/invitations',{token}),liveApi('/workouts',{token})]);setStudents(a);setInvites(b);setWorkouts(c)}catch(e){setError(e.message)}}
+  useEffect(()=>{load()},[])
+  const student=students[0], pending=invites.find(x=>x.status==='Pending')
+  const invite=async()=>{setBusy('invite');setError('');try{await liveApi('/invitations',{token,method:'POST',body:{studentEmail:'aluno@atlas.test'}});setMessage('Convite enviado. Entre como aluno para aceitar.');await load()}catch(e){setError(e.message)}finally{setBusy('')}}
+  const prescribe=async()=>{setBusy('workout');setError('');try{const days=student.availability.slice(0,2);await liveApi('/workouts',{token,method:'POST',body:{studentId:student.id,name:'Treino A — Peito & Costas',model:'AB',notes:'Amplitude controlada e progressão de carga.',scheduledDays:days,exercises:[{name:'Supino reto com halteres',sets:3,reps:10,suggestedWeight:18,restSeconds:90},{name:'Remada baixa',sets:3,reps:12,suggestedWeight:42,restSeconds:75},{name:'Elevação lateral',sets:3,reps:15,suggestedWeight:7,restSeconds:60}]}});setMessage('Treino prescrito e salvo no banco.');await load()}catch(e){setError(e.message)}finally{setBusy('')}}
+  const progress={invite:Boolean(student||pending),availability:Boolean(student?.availability?.length),workout:workouts.length>0,execution:workouts.some(w=>w.latestSession?.completedAt)}
+  return <div className="live-app"><LiveHeader user={user} onLogout={onLogout}/><main className="live-main"><div className="live-page-head"><div><span className="eyebrow">Professor</span><h1>Fluxo completo de teste</h1><p>Convide o aluno, aguarde a disponibilidade e prescreva o treino.</p></div></div><LiveSteps state={progress}/><LiveNotice type="error">{error}</LiveNotice><LiveNotice type="success">{message}</LiveNotice>
+    <section className="live-panel"><h2>1. Convite</h2>{student?<div className="live-state-card"><strong>{student.name}</strong><Badge>Vinculado</Badge></div>:pending?<div className="live-state-card"><strong>Aluno Atlas</strong><Badge>Aguardando aceite</Badge></div>:<button className="primary-btn" onClick={invite} disabled={busy==='invite'}><Share2 size={17}/> Enviar convite para Aluno Atlas</button>}</section>
+    <section className="live-panel"><h2>2. Disponibilidade do aluno</h2>{student?.availability?.length?<div className="live-days">{LIVE_DAY_SHORT.map((d,i)=><span key={i} className={student.availability.includes(i)?'active':''}>{d}</span>)}</div>:<p className="live-muted">Aguardando o aluno informar os dias disponíveis.</p>}</section>
+    <section className="live-panel"><h2>3. Prescrição</h2>{student?.availability?.length?<button className="primary-btn" onClick={prescribe} disabled={busy==='workout'}><Dumbbell size={17}/> Prescrever treino AB</button>:<p className="live-muted">A prescrição é liberada depois da disponibilidade.</p>}{workouts.map(w=><div className="live-workout-row" key={w.id}><div><strong>{w.name}</strong><small>{w.scheduledDays.map(d=>LIVE_DAYS[d]).join(' · ')}</small></div><Badge>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>)}</section>
+  </main></div>
+}
+
 function AppShell() {
   const [profile,setProfile]=useState('student')
   const [page,setPage]=useState('home')
