@@ -476,6 +476,35 @@ function LiveSteps({state}){
   return <div className="live-steps">{items.map(([label,done],i)=><div className={done?'done':''} key={label}><span>{done?<Check size={14}/>:i+1}</span><strong>{label}</strong></div>)}</div>
 }
 
+function LiveHeader({user,onLogout}){
+  return <header className="live-header"><Logo/><div className="live-header-user">
+    <Avatar initials={user.role==='trainer'?'PA':'AA'} size="sm"/>
+    <div><small>{user.role==='trainer'?'Professor':'Aluno'}</small><strong>{user.name}</strong></div>
+    <button onClick={onLogout}><LogOut size={17}/> <span>Sair</span></button>
+  </div></header>
+}
+
+function LiveLogin({onLogin}){
+  const [loading,setLoading]=useState('')
+  const [error,setError]=useState('')
+  const enter=async role=>{
+    setLoading(role);setError('')
+    try{
+      const data=await liveApi('/auth/demo-login',{method:'POST',body:{role}})
+      onLogin(data.token,data.user)
+    }catch(e){setError(e.message)}finally{setLoading('')}
+  }
+  return <div className="live-login"><div className="live-login-shell">
+    <div className="live-login-brand"><Logo/><Badge>Backend conectado</Badge></div>
+    <div className="live-login-copy"><span>FLUXO REAL DE TESTE</span><h1>Professor e aluno.<br/><em>Do convite ao treino concluído.</em></h1><p>Escolha um dos usuários de demonstração. As ações são persistidas no PostgreSQL do Render.</p></div>
+    <LiveNotice type="error">{error}</LiveNotice>
+    <div className="live-login-options">
+      <button disabled={loading} onClick={()=>enter('trainer')}><i><UsersRound size={25}/></i><div><small>USUÁRIO DE TESTE</small><strong>Professor Atlas</strong><span>Fluxo de convite e prescrição</span></div><ChevronRight size={22}/></button>
+      <button disabled={loading} onClick={()=>enter('student')}><i><Dumbbell size={25}/></i><div><small>USUÁRIO DE TESTE</small><strong>Aluno Atlas</strong><span>Fluxo de disponibilidade e execução</span></div><ChevronRight size={22}/></button>
+    </div>
+  </div></div>
+}
+
 function AppShell() {
   const [profile,setProfile]=useState('student')
   const [page,setPage]=useState('home')
