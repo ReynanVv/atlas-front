@@ -1,0 +1,1 @@
+export const API = 'https://controlfinance-app.onrender.com/atlas-api'\n
