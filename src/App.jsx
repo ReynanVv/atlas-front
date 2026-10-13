@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
@@ -447,6 +447,33 @@ function WorkoutBuilder({ setPage }) {
     <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Essa rotina foi escolhida por {selectedStudent}.</p></div><Lock size={18}/></div><div className="weekday-picker readonly">{dayLabels.map((d,i)=><span key={i} className={selectedDays.includes(i)?'active':''}>{d}</span>)}</div><div className="availability-summary"><strong>{selectedDays.length} dias disponíveis</strong><span>{selectedDays.map(i=>dayNames[i]).join(' · ')}</span></div><div className="info-note">O aluno define quando consegue treinar. Você define quais treinos (A, B, C...) serão distribuídos dentro dessa disponibilidade.</div></section>
     <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Séries totais</span><strong>{items.reduce((a,b)=>a+b.sets,0)}</strong></div><button className="primary-btn full" onClick={()=>setPage('workouts')}>Salvar e prescrever <Check size={17}/></button><button className="text-btn centered">Salvar como template</button></section></aside></div>
   </div>
+}
+
+const LIVE_API = 'https://controlfinance-app.onrender.com/atlas-api'
+const LIVE_DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+const LIVE_DAY_SHORT = ['D','S','T','Q','Q','S','S']
+
+async function liveApi(path,{token,method='GET',body}={}){
+  const response=await fetch(`${LIVE_API}${path}`,{
+    method,
+    headers:{
+      ...(body?{'Content-Type':'application/json'}:{}),
+      ...(token?{Authorization:`Bearer ${token}`}:{})
+    },
+    body:body?JSON.stringify(body):undefined
+  })
+  const payload=response.status===204?null:await response.json().catch(()=>({}))
+  if(!response.ok) throw new Error(payload?.error||'Não foi possível concluir a ação.')
+  return payload
+}
+
+function LiveNotice({type='info',children}){
+  return children?<div className={`live-notice live-notice-${type}`}>{children}</div>:null
+}
+
+function LiveSteps({state}){
+  const items=[['Convite',state.invite],['Disponibilidade',state.availability],['Prescrição',state.workout],['Execução',state.execution]]
+  return <div className="live-steps">{items.map(([label,done],i)=><div className={done?'done':''} key={label}><span>{done?<Check size={14}/>:i+1}</span><strong>{label}</strong></div>)}</div>
 }
 
 function AppShell() {
