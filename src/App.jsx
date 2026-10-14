@@ -629,34 +629,30 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   </div>
 }
 
-function StudentDetail({ setPage }) {
+function StudentDetail({ setPage, backend, studentId }) {
   const [tab,setTab]=useState('workouts')
-  const [exporting,setExporting]=useState(null)
-  const [target,setTarget]=useState('Bianca Melo')
-  const prescribed = [
-    {name:'Upper A — Peito & Costas', model:'AB', routine:'Seg · Qui', status:'Ativo'},
-    {name:'Lower A — Quadríceps', model:'AB', routine:'Ter · Sex', status:'Ativo'},
-  ]
-  const history = [
-    {date:'06 out.',name:'Upper A — Peito & Costas',duration:'54 min',status:'Realizado'},
-    {date:'03 out.',name:'Lower A — Quadríceps',duration:'58 min',status:'Realizado'},
-    {date:'30 set.',name:'Upper A — Peito & Costas',duration:'51 min',status:'Realizado'},
-    {date:'27 set.',name:'Lower A — Quadríceps',duration:'—',status:'Não realizado'},
-  ]
+  const student=(backend.students || []).find(st=>st.id===studentId)
+  if(!student) return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button><section className="panel empty-state"><UsersRound size={34}/><h2>Aluno não encontrado</h2><p>Selecione um aluno vinculado na tela anterior.</p></section></div>
+
+  const workouts=(backend.workouts || []).filter(w=>w.studentId===student.id)
+  const completed=workouts.filter(w=>w.latestSession?.completedAt)
+  const initials=(student.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()
+
   return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
-    <section className="student-profile-head"><Avatar initials="MC" size="lg"/><div><Badge>Aluno ativo</Badge><h1>Marina Costa</h1><p>Modelo AB · vinculada desde 12 mar. 2026</p></div><div className="profile-actions"><button className="secondary-btn"><MessageCircle size={17}/> Mensagem</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
-    <div className="stats-grid"><StatCard icon={Activity} label="Aderência" value="92%" detail="últimos 30 dias"/><StatCard icon={Dumbbell} label="Volume total" value="21.840 kg" detail="+12% no período"/><StatCard icon={Flame} label="Sequência" value="8 treinos" detail="melhor marca: 11"/></div>
+    <section className="student-profile-head"><Avatar initials={initials} size="lg"/><div><Badge>Aluno vinculado</Badge><h1>{student.name}</h1><p>{student.email}</p></div><div className="profile-actions"><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
+    <div className="stats-grid">
+      <StatCard icon={CalendarDays} label="Disponibilidade" value={student.availability?.length || 0} detail="dias por semana"/>
+      <StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="dados do backend"/>
+      <StatCard icon={Check} label="Treinos concluídos" value={completed.length} detail="sessões finalizadas"/>
+    </div>
 
     <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico de treinos</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
 
-    {tab==='workouts' && <section className="panel no-pad"><div className="detail-workout-list">{prescribed.map((w,i)=><div className="detail-workout-row" key={w.name}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>Modelo {w.model} · {w.routine}</small></div><Badge>{w.status}</Badge><button className="secondary-btn compact" onClick={()=>setExporting(w)}>Exportar para outro aluno <Share2 size={15}/></button><ChevronRight size={17}/></div>)}</div></section>}
+    {tab==='workouts' && <section className="panel no-pad"><div className="detail-workout-list">{workouts.length?workouts.map(w=><div className="detail-workout-row" key={w.id}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>Modelo {w.model} · {(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || 'Sem dias'}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state">Nenhum treino prescrito para este aluno.</div>}</div></section>}
 
-    {tab==='history' && <section className="panel no-pad"><div className="history-list">{history.map((h,i)=><div className="history-row detail-history" key={i}><div className="history-date">{h.date.toUpperCase()}</div><div className="history-main"><strong>{h.name}</strong><small>{h.duration}</small></div><Badge tone={h.status==='Realizado'?'green':'gray'}>{h.status}</Badge><ChevronRight size={18}/></div>)}</div></section>}
+    {tab==='history' && <section className="panel no-pad"><div className="history-list">{workouts.filter(w=>w.latestSession).length?workouts.filter(w=>w.latestSession).map(w=><div className="history-row detail-history" key={w.id}><div className="history-date">{new Date(w.latestSession.completedAt||w.latestSession.startedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase()}</div><div className="history-main"><strong>{w.name}</strong><small>{w.model}</small></div><Badge tone={w.latestSession.completedAt?'green':'light'}>{w.latestSession.completedAt?'Realizado':'Em andamento'}</Badge></div>):<div className="empty-state">Nenhuma sessão registrada para este aluno.</div>}</div></section>}
 
-    {tab==='progress' && <div className="grid-2"><section className="panel"><div className="panel-head"><div><h3>Progressão de carga</h3><p>Supino reto · últimas 8 semanas</p></div><Badge>+11%</Badge></div><div className="line-chart"><svg viewBox="0 0 500 190" preserveAspectRatio="none"><path d="M0,165 C80,150 110,160 155,130 S250,120 300,95 S410,76 500,46" fill="none" stroke="#497b50" strokeWidth="4" strokeLinecap="round"/></svg></div></section>
-    <section className="panel"><div className="panel-head"><div><h3>Anotações recentes</h3><p>Feedbacks registrados pela aluna.</p></div></div><div className="notes-list"><div><span>04 out.</span><p>“Última série do agachamento ficou bem pesada, mas sem perder a técnica.”</p></div><div><span>30 set.</span><p>“Supino mais estável. Sem desconforto no ombro.”</p></div></div></section></div>}
-
-    {exporting && <div className="modal-backdrop" onClick={()=>setExporting(null)}><div className="standard-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setExporting(null)}><X size={18}/></button><div className="modal-icon"><Share2 size={23}/></div><h2>Exportar treino</h2><p>Copie <strong>{exporting.name}</strong> para outro aluno. A cópia poderá ser editada antes de ser prescrita.</p><label className="field-label export-label">Aluno de destino</label><select className="export-target" value={target} onChange={e=>setTarget(e.target.value)}>{students.filter(s=>s.name!=='Marina Costa').sort((a,b)=>a.name.localeCompare(b.name)).map(s=><option key={s.name}>{s.name}</option>)}</select><button className="primary-btn full" onClick={()=>setExporting(null)}>Exportar para {target} <Share2 size={17}/></button></div></div>}
+    {tab==='progress' && <section className="panel empty-state"><LineChart size={32}/><h3>Evolução sem dados agregados</h3><p>O backend ainda não possui endpoint de evolução por carga/volume para este aluno. Nenhum gráfico fictício é exibido.</p></section>}
   </div>
 }
 
