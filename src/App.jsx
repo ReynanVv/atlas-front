@@ -306,7 +306,7 @@ function BottomNav({ profile, page, setPage }) {
   )}</nav>
 }
 
-function StudentHome({ setPage, token, user, backend, refreshBackend }) {
+function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWorkout }) {
   const [routineOpen, setRoutineOpen] = useState(false)
   const [routineDays, setRoutineDays] = useState(backend.availability || [])
   const [busy,setBusy]=useState('')
@@ -364,7 +364,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend }) {
         <h2>{currentWorkout.name}</h2>
         <p>{currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
         <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm"/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
-        {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => setPage('workout')}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
+        {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => onOpenWorkout(currentWorkout.id)}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
         <div className="workout-figure"><Dumbbell size={54}/></div>
@@ -382,7 +382,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend }) {
     <div className="section-title"><div><h2>Meus treinos</h2><p>Prescrições recebidas do seu professor.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
     <section className="panel no-pad upcoming-main">
       <div className="compact-list">
-        {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row" key={w.id} onClick={()=>!w.latestSession?.completedAt&&setPage('workout')}>
+        {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row" key={w.id} onClick={()=>!w.latestSession?.completedAt&&onOpenWorkout(w.id)}>
           <div className="date-box"><strong>{String(i+1).padStart(2,'0')}</strong><small>{w.model}</small></div>
           <div><strong>{w.name}</strong><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ') || 'Sem dias definidos'}</small></div>
           <Badge tone={w.latestSession?.completedAt?'green':'light'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em andamento':'Pendente'}</Badge><ChevronRight size={18}/>
@@ -742,6 +742,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const [studentQuery,setStudentQuery]=useState('')
   const [studentOpen,setStudentOpen]=useState(false)
   const [selectedStudentId,setSelectedStudentId]=useState('')
+  const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
   const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
   const [scheduledDays,setScheduledDays]=useState([])
@@ -934,6 +935,7 @@ function AppShell() {
   }
 
   const openStudent = id => { setSelectedStudentId(id); setPage('studentDetail') }
+  const openWorkout = id => { setSelectedWorkoutId(id); setPage('workout') }
 
   const logout = () => {
     const currentToken = token
@@ -942,6 +944,7 @@ function AppShell() {
     setUser(null)
     setBackend({ invitations:[], students:[], workouts:[], availability:[] })
     setSelectedStudentId('')
+    setSelectedWorkoutId('')
     setPage('home')
     if (currentToken) apiRequest('/auth/logout',{token:currentToken,method:'POST'}).catch(()=>{})
   }
@@ -956,8 +959,8 @@ function AppShell() {
 
   let content
   if (profile === 'student') {
-    content = page === 'home' ? <StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend}/> :
-      page === 'workout' ? <WorkoutExecution setPage={setPage} token={token} workout={backend.workouts[0]} refreshBackend={refreshBackend}/> :
+    content = page === 'home' ? <StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/> :
+      page === 'workout' ? <WorkoutExecution setPage={setPage} token={token} workout={backend.workouts.find(w=>w.id===selectedWorkoutId) || null} refreshBackend={refreshBackend}/> :
       page === 'history' ? <StudentHistory backend={backend}/> :
       page === 'progress' ? <StudentProgress backend={backend}/> :
       <Messages backend={backend}/>
