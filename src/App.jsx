@@ -534,25 +534,33 @@ function Messages({ trainer = false }) {
   </div>
 }
 
-function TrainerDashboard({ setPage }) {
+function TrainerDashboard({ setPage, user, backend }) {
   const [period, setPeriod] = useState('Dia')
+  const studentsData=backend.students || []
+  const workouts=backend.workouts || []
+  const completed=workouts.filter(w=>w.latestSession?.completedAt)
+  const inProgress=workouts.filter(w=>w.latestSession && !w.latestSession.completedAt)
   return <div className="page-stack"><section className="welcome-row">
-    <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, Amanda 👋</h1><p>Acompanhe quem está treinando e onde sua atenção faz mais diferença.</p></div>
+    <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe os alunos e prescrições registradas no Atlas.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
-  <div className="stats-grid"><StatCard icon={UsersRound} label="Alunos ativos" value="24" detail="+3 neste mês"/><StatCard icon={ListChecks} label="Treinos hoje" value="18" detail="12 já concluídos"/><StatCard icon={Activity} label="Aderência média" value="84%" detail="+6% vs. mês anterior"/></div>
+  <div className="stats-grid">
+    <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="dados do backend"/>
+    <StatCard icon={ListChecks} label="Treinos prescritos" value={workouts.length} detail={`${completed.length} concluídos`}/>
+    <StatCard icon={Activity} label="Em execução" value={inProgress.length} detail="sessões abertas"/>
+  </div>
   <div className="grid-2 dashboard-grid">
-    <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Execuções e programações dos seus alunos.</p></div><button className="text-btn" onClick={()=>setPage('students')}>Ver todos</button></div>
+    <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições registradas.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
       <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
-      <div className="activity-list">{students.slice(0,3).map((s,i)=><div className="activity-row" key={s.name}><Avatar initials={s.initials} size="sm"/><div><strong>{s.name}</strong><small>{i===0?'Finalizou Upper A':period === 'Dia' ? 'Treino programado para hoje' : `Atividade registrada no período: ${period.toLowerCase()}`}</small></div><Badge tone={i===0?'green':'light'}>{i===0?'Concluído':'Pendente'}</Badge></div>)}</div>
+      <div className="activity-list">{workouts.length?workouts.slice(0,5).map(w=><div className="activity-row" key={w.id}><Avatar initials={(w.studentName||'A').slice(0,2).toUpperCase()} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
     </section>
-    <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alunos com queda de frequência.</p></div><Bell size={19}/></div>
-      <div className="attention-list"><div><Avatar initials="DR" size="sm"/><span><strong>Diego Ramos</strong><small>2 treinos não realizados nesta semana</small></span><ChevronRight size={18}/></div><div><Avatar initials="LN" size="sm"/><span><strong>Lucas Nunes</strong><small>Comentou dor no ombro após o treino</small></span><ChevronRight size={18}/></div></div>
+    <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alertas aparecerão quando houver regras reais de frequência.</p></div><Bell size={19}/></div>
+      <div className="empty-state compact-empty">Nenhum alerta real disponível no momento.</div>
     </section>
   </div>
-  <section className="panel"><div className="panel-head"><div><h3>Visão geral dos alunos</h3><p>Aderência aos treinos nos últimos 30 dias.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
-    <div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Modelo</span><span>Aderência</span><span>Último treino</span><span>Evolução</span><span></span></div>
-    {students.map(s=><div className="student-table-row" key={s.name}><div><Avatar initials={s.initials} size="sm"/><strong>{s.name}</strong></div><span>{s.model}</span><div className="adherence"><div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><strong>{s.adherence}%</strong></div><span>{s.last}</span><Badge>{s.trend}</Badge><ChevronRight size={18}/></div>)}</div>
+  <section className="panel"><div className="panel-head"><div><h3>Visão geral dos alunos</h3><p>Somente alunos realmente vinculados.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
+    {studentsData.length?<div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Disponibilidade</span><span>Treinos</span><span>Status</span><span>E-mail</span><span></span></div>
+    {studentsData.map(st=><div className="student-table-row" key={st.id}><div><Avatar initials={(st.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()} size="sm"/><strong>{st.name}</strong></div><span>{st.availability?.length || 0} dias</span><strong>{st.workoutCount || 0}</strong><Badge>Vinculado</Badge><span>{st.email}</span><ChevronRight size={18}/></div>)}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
   </section>
   </div>
 }
