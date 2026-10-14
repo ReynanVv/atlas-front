@@ -129,6 +129,7 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   const [invite,setInvite]=useState(null)
   const [stage,setStage]=useState('loading')
   const [name,setName]=useState('')
+  const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
   const [auth,setAuth]=useState(null)
   const [days,setDays]=useState([])
@@ -143,7 +144,7 @@ function InviteOnboarding({ inviteToken, onComplete }) {
       .then(data=>{
         if(cancelled)return
         setInvite(data)
-        setStage(data.accountExists?'login':'register')
+        setStage('choice')
       })
       .catch(e=>{if(!cancelled){setError(e.message);setStage('error')}})
     return()=>{cancelled=true}
@@ -153,7 +154,7 @@ function InviteOnboarding({ inviteToken, onComplete }) {
     setBusy(true);setError('')
     try{
       const data=await apiRequest('/auth/register',{method:'POST',body:{
-        name,email:invite.studentEmail,password,inviteToken
+        name,email,password,inviteToken
       }})
       setAuth(data)
       setStage('availability')
@@ -163,7 +164,8 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   const loginAndAccept=async()=>{
     setBusy(true);setError('')
     try{
-      const data=await apiRequest('/auth/login',{method:'POST',body:{email:invite.studentEmail,password}})
+      const data=await apiRequest('/auth/login',{method:'POST',body:{email,password}})
+      if(data.user.role!=='student')throw new Error('Este convite precisa ser aceito por uma conta de aluno.')
       await apiRequest('/invitations/accept-token',{token:data.token,method:'POST',body:{token:inviteToken}})
       setAuth(data)
       setStage('availability')
@@ -188,37 +190,49 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   return <div className="auth-screen invite-onboarding">
     <div className="invite-flow-card">
       <div className="invite-flow-top"><Logo/><Badge>Convite de {invite?.trainerName}</Badge></div>
+
+      {stage==='choice'&&<>
+        <span className="eyebrow">Você foi convidado</span>
+        <h1>Treine com {invite?.trainerName}</h1>
+        <p>Use sua conta do Atlas ou crie uma nova. Depois você escolherá os dias em que pode treinar.</p>
+        <div className="invite-choice-grid">
+          <button className="invite-choice-card" onClick={()=>{setError('');setStage('register')}}><UserPlus size={24}/><div><strong>Criar minha conta</strong><span>Ainda não uso o Atlas</span></div><ChevronRight size={18}/></button>
+          <button className="invite-choice-card" onClick={()=>{setError('');setStage('login')}}><LogIn size={24}/><div><strong>Já tenho conta</strong><span>Entrar e aceitar convite</span></div><ChevronRight size={18}/></button>
+        </div>
+      </>}
+
       {stage==='register'&&<>
+        <button className="auth-back invite-back" onClick={()=>setStage('choice')}><ArrowLeft size={17}/> Voltar</button>
         <span className="eyebrow">Primeiro acesso</span>
         <h1>Crie sua conta</h1>
-        <p>{invite?.trainerName} convidou você para treinar pelo Atlas. Ao criar a conta, o vínculo com o treinador será feito automaticamente.</p>
+        <p>Ao finalizar o cadastro, você será vinculado automaticamente a {invite?.trainerName}.</p>
         {error&&<div className="auth-error">{error}</div>}
         <label className="field-label">Nome</label>
         <div className="input-wrap"><UserRound size={18}/><input value={name} onChange={e=>setName(e.target.value)} placeholder="Seu nome"/></div>
-        <label className="field-label">E-mail do convite</label>
-        <div className="input-wrap disabled-input"><Mail size={18}/><input value={invite.studentEmail} readOnly/></div>
+        <label className="field-label">E-mail</label>
+        <div className="input-wrap"><Mail size={18}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></div>
         <label className="field-label">Crie uma senha</label>
         <div className="input-wrap"><Lock size={18}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo de 8 caracteres"/></div>
-        <button className="auth-primary auth-submit" disabled={!name||password.length<8||busy} onClick={register}>{busy?'Criando conta...':'Criar conta e aceitar convite'} <ChevronRight size={18}/></button>
-        <small className="invite-existing">Já tem uma conta? Este convite está associado a <strong>{invite.studentEmail}</strong>.</small>
+        <button className="auth-primary auth-submit" disabled={!name||!email||password.length<8||busy} onClick={register}>{busy?'Criando conta...':'Criar conta e aceitar convite'} <ChevronRight size={18}/></button>
       </>}
 
       {stage==='login'&&<>
-        <span className="eyebrow">Você já tem uma conta</span>
-        <h1>Aceitar convite</h1>
-        <p>Entre na conta <strong>{invite.studentEmail}</strong> para aceitar o convite de {invite.trainerName}.</p>
+        <button className="auth-back invite-back" onClick={()=>setStage('choice')}><ArrowLeft size={17}/> Voltar</button>
+        <span className="eyebrow">Conta existente</span>
+        <h1>Entre para aceitar</h1>
+        <p>Use sua conta de aluno do Atlas para aceitar o convite de {invite?.trainerName}.</p>
         {error&&<div className="auth-error">{error}</div>}
         <label className="field-label">E-mail</label>
-        <div className="input-wrap disabled-input"><Mail size={18}/><input value={invite.studentEmail} readOnly/></div>
+        <div className="input-wrap"><Mail size={18}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></div>
         <label className="field-label">Senha</label>
         <div className="input-wrap"><Lock size={18}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha"/></div>
-        <button className="auth-primary auth-submit" disabled={!password||busy} onClick={loginAndAccept}>{busy?'Entrando...':'Entrar e aceitar convite'} <Check size={18}/></button>
+        <button className="auth-primary auth-submit" disabled={!email||!password||busy} onClick={loginAndAccept}>{busy?'Entrando...':'Entrar e aceitar convite'} <Check size={18}/></button>
       </>}
 
       {stage==='availability'&&<>
         <span className="eyebrow">Último passo</span>
         <h1>Quando você pode treinar?</h1>
-        <p>Escolha seus dias disponíveis. {invite.trainerName} verá essa informação para distribuir seus treinos.</p>
+        <p>Escolha seus dias disponíveis. {invite?.trainerName} verá essa informação para organizar seus treinos.</p>
         {error&&<div className="auth-error">{error}</div>}
         <div className="invite-day-grid">{labels.map((label,i)=><button key={i} className={days.includes(i)?'active':''} onClick={()=>toggleDay(i)}><strong>{label}</strong><small>{names[i]}</small></button>)}</div>
         <div className="invite-availability-summary">{days.length?<><strong>{days.length} dias selecionados</strong><span>{days.map(i=>names[i]).join(' · ')}</span></>:<span>Selecione pelo menos um dia.</span>}</div>
