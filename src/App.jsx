@@ -24,6 +24,12 @@ function storeToken(token) {
 }
 
 
+function initialsOf(name) {
+  const parts=String(name || '').trim().split(/\s+/).filter(Boolean)
+  if(!parts.length) return '?'
+  return (parts.length===1 ? parts[0].slice(0,2) : parts[0][0]+parts[parts.length-1][0]).toUpperCase()
+}
+
 async function apiRequest(path, { token, method = 'GET', body } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     method,
@@ -267,8 +273,8 @@ function Topbar({ profile, user, onLogout }) {
       <button className="icon-btn"><Bell size={19}/><span className="notification-dot"></span></button>
       <div className="profile-switch">
         <div className="profile-trigger static-profile">
-          <Avatar initials={profile === 'student' ? 'AA' : 'PA'} size="sm"/>
-          <span><small>{profile === 'student' ? 'Aluno' : 'Treinador'}</small><strong>{user?.name || 'Atlas'}</strong></span>
+          <Avatar initials={initialsOf(user?.name)} size="sm"/>
+          <span><small>{profile === 'student' ? 'Aluno' : 'Treinador'}</small><strong>{user?.name}</strong></span>
         </div>
         <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
@@ -357,7 +363,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend }) {
         <div className="today-meta"><Badge>{currentWorkout.latestSession?.completedAt ? 'Concluído' : currentWorkout.latestSession ? 'Em andamento' : 'Treino disponível'}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span></div>
         <h2>{currentWorkout.name}</h2>
         <p>{currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
-        <div className="coach-line"><Avatar initials="PA" size="sm"/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Professor Atlas'}</strong></span></div>
+        <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm"/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
         {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => setPage('workout')}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
@@ -534,7 +540,7 @@ function StudentHistory({ backend }) {
       const status=w.latestSession?.completedAt?'Realizado':'Em andamento'
       return <div className="history-row" key={w.id}>
         <div className="history-date">{label}</div>
-        <div className="history-main"><strong>{w.name}</strong><small><Avatar initials={(w.trainerName||'T').slice(0,2).toUpperCase()} size="xs"/>{w.trainerName || 'Treinador'}</small></div>
+        <div className="history-main"><strong>{w.name}</strong><small><Avatar initials={initialsOf(w.trainerName)} size="xs"/>{w.trainerName || 'Treinador'}</small></div>
         <Badge tone={status==='Realizado'?'green':'light'}>{status}</Badge><ChevronRight size={18}/>
       </div>
     }):<div className="empty-state">Nenhuma sessão registrada ainda.</div>}</div></section>
@@ -581,7 +587,7 @@ function TrainerDashboard({ setPage, user, backend }) {
   <div className="grid-2 dashboard-grid">
     <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições registradas.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
       <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
-      <div className="activity-list">{workouts.length?workouts.slice(0,5).map(w=><div className="activity-row" key={w.id}><Avatar initials={(w.studentName||'A').slice(0,2).toUpperCase()} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
+      <div className="activity-list">{workouts.length?workouts.slice(0,5).map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
     </section>
     <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alertas aparecerão quando houver regras reais de frequência.</p></div><Bell size={19}/></div>
       <div className="empty-state compact-empty">Nenhum alerta real disponível no momento.</div>
@@ -589,7 +595,7 @@ function TrainerDashboard({ setPage, user, backend }) {
   </div>
   <section className="panel"><div className="panel-head"><div><h3>Visão geral dos alunos</h3><p>Somente alunos realmente vinculados.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
     {studentsData.length?<div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Disponibilidade</span><span>Treinos</span><span>Status</span><span>E-mail</span><span></span></div>
-    {studentsData.map(st=><div className="student-table-row" key={st.id}><div><Avatar initials={(st.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()} size="sm"/><strong>{st.name}</strong></div><span>{st.availability?.length || 0} dias</span><strong>{st.workoutCount || 0}</strong><Badge>Vinculado</Badge><span>{st.email}</span><ChevronRight size={18}/></div>)}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
+    {studentsData.map(st=><div className="student-table-row" key={st.id}><div><Avatar initials={initialsOf(st.name)} size="sm"/><strong>{st.name}</strong></div><span>{st.availability?.length || 0} dias</span><strong>{st.workoutCount || 0}</strong><Badge>Vinculado</Badge><span>{st.email}</span><ChevronRight size={18}/></div>)}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
   </section>
   </div>
 }
@@ -630,7 +636,7 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
 
     {linkedStudents.length ? <div className="student-card-grid">{linkedStudents.map((st)=><article className="student-card clickable" key={st.id} onClick={()=>onOpenStudent(st.id)}>
-      <div className="student-card-top"><Avatar initials="AA"/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
+      <div className="student-card-top"><Avatar initials={initialsOf(st.name)}/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
       <div className="student-kpis">
         <div><span>Disponibilidade</span><strong>{st.availability?.length || 0} dias</strong></div>
         <div><span>Treinos</span><strong>{st.workoutCount || 0}</strong></div>
@@ -639,7 +645,7 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
       <div className="routine-days mini-routine">{['D','S','T','Q','Q','S','S'].map((d,i)=><span key={i} className={st.availability?.includes(i)?'active':''}>{d}</span>)}</div>
       <div className="student-actions"><button onClick={(e)=>{e.stopPropagation();onOpenStudent(st.id)}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
     </article>)}</div> : <section className="panel empty-state">
-      <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Envie o convite e peça para o aluno aceitar no perfil Aluno Atlas.</p>
+      <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Gere um link de convite e peça para o aluno concluir o cadastro ou login pelo próprio link.</p>
     </section>}
 
     {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal invite-modal" onClick={e=>e.stopPropagation()}>
@@ -707,7 +713,7 @@ function Workouts({ setPage, backend }) {
   const rows=(backend.workouts || []).map(w=>({
     id:w.id,
     name:w.name,
-    student:w.studentName || 'Aluno Atlas',
+    student:w.studentName || 'Aluno não identificado',
     routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
     model:w.model,
     status:w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'
@@ -810,7 +816,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
     {error && <div className="app-error-banner">{error}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
-        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={(st.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()} size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
         <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
         <label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Treino A — Peito e costas"/></label>
         <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações para o aluno"/></label>
