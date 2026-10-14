@@ -732,14 +732,19 @@ function Workouts({ setPage, backend }) {
 
 function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const linkedStudents=backend.students || []
-  useEffect(()=>{ refreshBackend() },[])
+  const [syncingStudents,setSyncingStudents]=useState(true)
+  useEffect(()=>{
+    let active=true
+    Promise.resolve(refreshBackend()).finally(()=>{ if(active)setSyncingStudents(false) })
+    return()=>{active=false}
+  },[])
   const [items,setItems]=useState([])
-  const [studentQuery,setStudentQuery]=useState(linkedStudents[0]?.name || '')
+  const [studentQuery,setStudentQuery]=useState('')
   const [studentOpen,setStudentOpen]=useState(false)
-  const [selectedStudentId,setSelectedStudentId]=useState(linkedStudents[0]?.id || '')
+  const [selectedStudentId,setSelectedStudentId]=useState('')
   const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
-  const [scheduledDays,setScheduledDays]=useState(linkedStudents[0]?.availability?.slice(0,2) || [])
+  const [scheduledDays,setScheduledDays]=useState([])
   const [notes,setNotes]=useState('')
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
@@ -753,24 +758,19 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const updateItem=(id,key,value)=>setItems(v=>v.map(ex=>ex.id===id?{...ex,[key]:value}:ex))
 
   const sortedStudents=useMemo(()=>[...linkedStudents].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[linkedStudents])
-  const matches=sortedStudents.filter(st=>st.name.toLowerCase().includes(studentQuery.toLowerCase()))
-  const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId) || linkedStudents[0]
+  const matches=sortedStudents.filter(st=>{
+    const q=studentQuery.trim().toLowerCase()
+    return !q || st.name.toLowerCase().includes(q) || st.email.toLowerCase().includes(q)
+  })
+  const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId) || null
   const availableDays=selectedStudent?.availability || []
   const dayLabels=['D','S','T','Q','Q','S','S']
   const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
-  useEffect(()=>{
-    if(!selectedStudentId && linkedStudents[0]){
-      setSelectedStudentId(linkedStudents[0].id)
-      setStudentQuery(linkedStudents[0].name)
-      setScheduledDays((linkedStudents[0].availability || []).slice(0,2))
-    }
-  },[linkedStudents])
-
   const chooseStudent = st => {
     setSelectedStudentId(st.id)
-    setStudentQuery(st.name)
-    setScheduledDays((st.availability || []).slice(0,2))
+    setStudentQuery('')
+    setScheduledDays([])
     setStudentOpen(false)
   }
 
@@ -807,6 +807,11 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
+  if(syncingStudents) return <div className="page-stack builder-page">
+    <button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
+    <section className="panel empty-state"><UsersRound size={34}/><h2>Atualizando alunos...</h2><p>Buscando os vínculos mais recentes antes de montar a prescrição.</p></section>
+  </div>
+
   if(!linkedStudents.length) return <div className="page-stack builder-page">
     <button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
     <section className="panel empty-state"><UsersRound size={34}/><h2>Nenhum aluno vinculado</h2><p>Gere um link de convite e aguarde o aluno aceitar antes de montar a prescrição.</p><button className="primary-btn" onClick={()=>setPage('students')}>Ir para Alunos</button></section>
@@ -817,7 +822,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
     {error && <div className="app-error-banner">{error}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
-        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentOpen ? studentQuery : (selectedStudent?.name || '')} onFocus={()=>{setStudentQuery('');setStudentOpen(true)}} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Selecione ou busque um aluno"/><button type="button" onClick={()=>{setStudentQuery('');setStudentOpen(v=>!v)}}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span><strong>{st.name}</strong><small>{st.email}</small></span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
         <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
         <label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Treino A — Peito e costas"/></label>
         <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações para o aluno"/></label>
