@@ -17,8 +17,17 @@ const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],short=['D','S','T','Q','
 let demo=null,token='',user=null,invites=[],students=[],availability=[],workouts=[],session=null,msg='',err='';
 
 async function req(path,opt={}){
- const r=await fetch(API+path,{method:opt.method||'GET',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:opt.body?JSON.stringify(opt.body):undefined});
- const data=await r.json().catch(()=>({})); if(!r.ok)throw new Error(data.error||'Erro na operação.'); return data;
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),60000);
+ try{
+  const r=await fetch(API+path,{method:opt.method||'GET',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:opt.body?JSON.stringify(opt.body):undefined,signal:controller.signal});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||'Erro na operação.');
+  return data;
+ }catch(e){
+  if(e?.name==='AbortError') throw new Error('O backend demorou mais de 60 segundos para responder. Tente novamente.');
+  throw e;
+ }finally{clearTimeout(timer)}
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const badge=t=>'<span class="badge">'+esc(t)+'</span>';
@@ -27,7 +36,17 @@ function steps(x){return '<div class="steps">'+[['Convite',x.invite],['Disponibi
 function top(){return '<div class="top"><div class="brand"><i>⌁</i>Atlas</div><button class="logout" id="logout">Sair</button></div>'}
 function panel(title,sub,body,tag=''){return '<section class="panel"><div class="panel-title"><div><h2>'+title+'</h2><p class="muted">'+sub+'</p></div>'+(tag?badge(tag):'')+'</div>'+body+'</section>'}
 
-async function boot(){try{demo=await req('/demo');renderLogin()}catch(e){app.innerHTML='<div class="login"><div class="login-box"><h1>Atlas</h1><div class="notice err">'+esc(e.message)+'</div></div></div>'}}
+async function boot(){
+ app.innerHTML='<div class="login"><div class="login-box"><span class="pill">ATLAS</span><h1>Conectando ao backend...</h1><p>O serviço gratuito do Render pode levar alguns segundos para iniciar.</p><div class="notice ok">Carregando usuários e banco de dados...</div></div></div>';
+ try{
+  demo=await req('/demo');
+  renderLogin();
+ }catch(e){
+  app.innerHTML='<div class="login"><div class="login-box"><span class="pill">ERRO DE CONEXÃO</span><h1>Não foi possível carregar o Atlas.</h1><div class="notice err">'+esc(e.message)+'</div><button class="primary" id="retry">Tentar novamente</button></div></div>';
+  const retry=document.getElementById('retry');
+  if(retry)retry.onclick=boot;
+ }
+}
 function renderLogin(){
  app.innerHTML='<div class="login"><div class="login-box"><span class="pill">BACKEND CONECTADO</span><h1>Professor e aluno.<br><em>Do convite ao treino concluído.</em></h1><p>Escolha um perfil. Este ambiente usa o PostgreSQL do Render e permite repetir o fluxo completo.</p>'+notice()+'<div class="roles"><button class="role" data-role="trainer"><strong>Professor Atlas</strong><span>Convite e prescrição</span></button><button class="role" data-role="student"><strong>Aluno Atlas</strong><span>Disponibilidade e execução</span></button></div></div></div>';
  document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>login(b.dataset.role));
