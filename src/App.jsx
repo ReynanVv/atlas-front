@@ -511,46 +511,98 @@ function Workouts({ setPage }) {
   </div>
 }
 
-function WorkoutBuilder({ setPage }) {
+function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
+  const linkedStudents=backend.students || []
   const [items,setItems]=useState(exercises.slice(0,3))
-  const [studentQuery,setStudentQuery]=useState('Marina Costa')
+  const [studentQuery,setStudentQuery]=useState(linkedStudents[0]?.name || '')
   const [studentOpen,setStudentOpen]=useState(false)
-  const [selectedStudent,setSelectedStudent]=useState('Marina Costa')
+  const [selectedStudentId,setSelectedStudentId]=useState(linkedStudents[0]?.id || '')
   const [workoutName,setWorkoutName]=useState('Upper A — Peito & Costas')
   const [model,setModel]=useState('AB')
+  const [scheduledDays,setScheduledDays]=useState(linkedStudents[0]?.availability?.slice(0,2) || [])
+  const [notes,setNotes]=useState('Intensidade moderada. Foco em progressão de carga e controle da fase excêntrica.')
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
   const remove=id=>setItems(v=>v.filter(e=>e.id!==id))
-  const sortedStudents=useMemo(()=>[...students].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[ ])
-  const matches=sortedStudents.filter(s=>s.name.toLowerCase().includes(studentQuery.toLowerCase()))
-  const availability={
-    'Marina Costa':[0,1,3,4],
-    'Lucas Nunes':[0,2,4],
-    'Bianca Melo':[1,2,4,5],
-    'Diego Ramos':[1,5],
-  }
-  const dayLabels=['S','T','Q','Q','S','S','D']
-  const dayNames=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
-  const selectedDays=availability[selectedStudent] || []
+  const sortedStudents=useMemo(()=>[...linkedStudents].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[linkedStudents])
+  const matches=sortedStudents.filter(st=>st.name.toLowerCase().includes(studentQuery.toLowerCase()))
+  const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId) || linkedStudents[0]
+  const availableDays=selectedStudent?.availability || []
+  const dayLabels=['D','S','T','Q','Q','S','S']
+  const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
   const templateNames=['Upper A — Peito & Costas','Lower A — Quadríceps','Upper B — Ombros & Braços','Full Body — Base','Push — Hipertrofia']
 
-  const chooseStudent = name => {setSelectedStudent(name);setStudentQuery(name);setStudentOpen(false)}
+  useEffect(()=>{
+    if(!selectedStudentId && linkedStudents[0]){
+      setSelectedStudentId(linkedStudents[0].id)
+      setStudentQuery(linkedStudents[0].name)
+      setScheduledDays((linkedStudents[0].availability || []).slice(0,2))
+    }
+  },[linkedStudents])
+
+  const chooseStudent = st => {
+    setSelectedStudentId(st.id)
+    setStudentQuery(st.name)
+    setScheduledDays((st.availability || []).slice(0,2))
+    setStudentOpen(false)
+  }
+
+  const toggleScheduledDay = day => {
+    if(!availableDays.includes(day)) return
+    setScheduledDays(v=>v.includes(day)?v.filter(x=>x!==day):[...v,day].sort((a,b)=>a-b))
+  }
+
+  const saveWorkout=async()=>{
+    if(!selectedStudent?.id) { setError('Vincule um aluno antes de criar o treino.'); return }
+    if(!scheduledDays.length) { setError('Selecione ao menos um dia disponível do aluno.'); return }
+    setBusy(true);setError('')
+    try{
+      await apiRequest('/workouts',{token,method:'POST',body:{
+        studentId:selectedStudent.id,
+        name:workoutName,
+        model,
+        notes,
+        scheduledDays,
+        exercises:items.map(ex=>({
+          name:ex.name,
+          sets:Math.max(1,Number.parseInt(ex.sets,10)||1),
+          reps:Math.max(1,Number.parseInt(String(ex.reps),10)||1),
+          suggestedWeight:Math.max(0,Number.parseFloat(String(ex.weight).replace(',','.'))||0),
+          restSeconds:Math.max(0,Number.parseInt(String(ex.rest),10)||0),
+        }))
+      }})
+      await refreshBackend()
+      setPage('workouts')
+    }catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+
+  if(!linkedStudents.length) return <div className="page-stack builder-page">
+    <button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
+    <section className="panel empty-state"><UsersRound size={34}/><h2>Nenhum aluno vinculado</h2><p>Envie um convite na tela Alunos e aguarde o aceite antes de montar a prescrição.</p><button className="primary-btn" onClick={()=>setPage('students')}>Ir para Alunos</button></section>
+  </div>
 
   return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Escolha o aluno, aproveite um treino já criado e ajuste os exercícios antes de salvar.</p></section>
+    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Escolha o aluno, respeite a disponibilidade informada e salve o treino diretamente no backend.</p></section>
+    {error && <div className="app-error-banner">{error}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
-        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>{setStudentQuery(studentOpen?'':selectedStudent);setStudentOpen(v=>!v)}}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(s=><button type="button" key={s.name} className={selectedStudent===s.name?'active':''} onClick={()=>chooseStudent(s.name)}><Avatar initials={s.initials} size="xs"/><span>{s.name}</span>{selectedStudent===s.name&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials="AA" size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
         <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
-        <label className="span-2"><span>Nome do treino / treino já criado</span><select value={workoutName} onChange={e=>setWorkoutName(e.target.value)}>{templateNames.map(t=><option key={t}>{t}</option>)}</select><small className="helper-text">Selecione um treino previamente criado para usar como base e editar antes de salvar.</small></label>
+        <label className="span-2"><span>Nome do treino / treino já criado</span><select value={workoutName} onChange={e=>setWorkoutName(e.target.value)}>{templateNames.map(t=><option key={t}>{t}</option>)}</select><small className="helper-text">Você pode usar um nome já criado como base e ajustar antes de salvar.</small></label>
         <label><span>Tempo estimado</span><input defaultValue="52 min"/></label>
         <label><span>Posição na rotina</span><select><option>Treino A</option><option>Treino B</option><option>Treino C</option></select></label>
-        <label className="span-2"><span>Observações gerais</span><textarea defaultValue="Intensidade moderada. Foco em progressão de carga e controle da fase excêntrica."/></label>
+        <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)}/></label>
       </div></section>
-      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Arraste conceitualmente para reorganizar a ordem.</p></div><button className="secondary-btn compact"><Plus size={16}/> Adicionar exercício</button></div>
+      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Esses exercícios serão persistidos junto com a prescrição.</p></div><button className="secondary-btn compact" type="button"><Plus size={16}/> Adicionar exercício</button></div>
         <div className="builder-exercises">{items.map((ex,idx)=><div className="builder-exercise" key={ex.id}><span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span><div className="builder-ex-main"><strong>{ex.name}</strong><small>{ex.group}</small></div><label><small>Séries</small><input defaultValue={ex.sets}/></label><label><small>Reps</small><input defaultValue={ex.reps}/></label><label><small>Carga</small><input defaultValue={ex.weight}/></label><label><small>Descanso</small><input defaultValue={ex.rest}/></label><button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button></div>)}</div>
       </section>
     </div>
-    <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Essa rotina foi escolhida por {selectedStudent}.</p></div><Lock size={18}/></div><div className="weekday-picker readonly">{dayLabels.map((d,i)=><span key={i} className={selectedDays.includes(i)?'active':''}>{d}</span>)}</div><div className="availability-summary"><strong>{selectedDays.length} dias disponíveis</strong><span>{selectedDays.map(i=>dayNames[i]).join(' · ')}</span></div><div className="info-note">O aluno define quando consegue treinar. Você define quais treinos (A, B, C...) serão distribuídos dentro dessa disponibilidade.</div></section>
-    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Séries totais</span><strong>{items.reduce((a,b)=>a+b.sets,0)}</strong></div><button className="primary-btn full" onClick={()=>setPage('workouts')}>Salvar e prescrever <Check size={17}/></button><button className="text-btn centered">Salvar como template</button></section></aside></div>
+    <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Escolhida por {selectedStudent?.name}.</p></div><Lock size={18}/></div>
+      <div className="weekday-picker readonly selectable-days">{dayLabels.map((d,i)=><button type="button" key={i} disabled={!availableDays.includes(i)} className={scheduledDays.includes(i)?'active':''} onClick={()=>toggleScheduledDay(i)}>{d}</button>)}</div>
+      <div className="availability-summary"><strong>{availableDays.length} dias disponíveis</strong><span>{availableDays.map(i=>dayNames[i]).join(' · ') || 'Ainda não informado'}</span></div>
+      <div className="info-note">O aluno define quando consegue treinar. Selecione, dentro desses dias, quando este treino poderá ser executado.</div>
+    </section>
+    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Dias</span><strong>{scheduledDays.map(i=>dayNames[i]).join(' · ') || '—'}</strong></div><button className="primary-btn full" disabled={busy||!scheduledDays.length} onClick={saveWorkout}>{busy?'Salvando...':'Salvar e prescrever'} <Check size={17}/></button></section></aside></div>
   </div>
 }
 
