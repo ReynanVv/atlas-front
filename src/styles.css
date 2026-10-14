@@ -709,3 +709,69 @@ button{color:inherit}
 .generic-invite-preview div{display:flex;flex-direction:column;gap:3px}
 .generic-invite-preview strong{color:#0B1B3A}
 .generic-invite-preview span{font-size:10px;line-height:1.4;color:#69737A}
+
+
+/* Mobile invite modal overflow fix */
+.invite-modal,
+.invite-modal *{
+  min-width:0;
+}
+.invite-modal{
+  width:min(420px,calc(100vw - 32px));
+  max-width:100%;
+  overflow:hidden;
+}
+.invite-link-success,
+.generic-invite-preview,
+.official-invite-link,
+.invite-link-actions{
+  width:100%;
+  max-width:100%;
+}
+.invite-link-success>div,
+.generic-invite-preview>div{
+  min-width:0;
+}
+.official-invite-link{
+  display:flex;
+  min-width:0;
+  overflow:hidden;
+}
+.official-invite-link span{
+  display:block;
+  flex:1 1 auto;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.official-invite-link button{
+  flex:0 0 auto;
+}
+@media(max-width:680px){
+  .modal-backdrop{
+    padding:12px;
+    overflow-x:hidden;
+  }
+  .invite-modal{
+    width:calc(100vw - 24px);
+    max-width:calc(100vw - 24px);
+    padding:24px 18px;
+    border-radius:20px;
+  }
+  .invite-modal h2{
+    font-size:20px;
+    padding:0 22px;
+  }
+  .official-invite-link{
+    padding-left:10px;
+  }
+  .official-invite-link span{
+    font-size:10px;
+  }
+  .official-invite-link button{
+    padding:8px;
+    font-size:10px;
+  }
+}
