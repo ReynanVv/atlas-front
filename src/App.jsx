@@ -843,6 +843,7 @@ function AppShell() {
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
   const [token,setToken]=useState('')
   const [user,setUser]=useState(null)
+  const [restoringSession,setRestoringSession]=useState(true)
   const [page,setPage]=useState('home')
   const [backend,setBackend]=useState({ invitations:[], students:[], workouts:[], availability:[] })
   const [backendError,setBackendError]=useState('')
@@ -874,9 +875,31 @@ function AppShell() {
     }
   }
 
+  useEffect(()=>{
+    let cancelled=false
+    const restore=async()=>{
+      const storedToken=readStoredToken()
+      if(!storedToken){if(!cancelled)setRestoringSession(false);return}
+      try{
+        const data=await apiRequest('/me',{token:storedToken})
+        if(cancelled)return
+        setToken(storedToken)
+        setUser(data.user)
+        setPage(data.user.role==='trainer'?'dashboard':'home')
+      }catch{
+        storeToken('')
+      }finally{
+        if(!cancelled)setRestoringSession(false)
+      }
+    }
+    restore()
+    return()=>{cancelled=true}
+  },[])
+
   useEffect(()=>{ refreshBackend() },[token,user?.id])
 
   const handleLogin = (nextToken,nextUser) => {
+    storeToken(nextToken)
     setToken(nextToken)
     setUser(nextUser)
     setPage(nextUser.role === 'trainer' ? 'dashboard' : 'home')
@@ -886,13 +909,20 @@ function AppShell() {
 
   const logout = async () => {
     try { if (token) await apiRequest('/auth/logout',{token,method:'POST'}) } catch {}
+    storeToken('')
     setToken('')
     setUser(null)
     setBackend({ invitations:[], students:[], workouts:[], availability:[] })
+    setSelectedStudentId('')
     setPage('home')
   }
 
   if (inviteToken) return <InviteOnboarding inviteToken={inviteToken} onComplete={handleLogin}/>
+
+  if (restoringSession) return <div className="auth-screen session-restore-screen">
+    <div className="session-restore-card"><Logo/><span className="eyebrow">Atlas</span><h2>Restaurando sua sessão...</h2><p>Validando seu acesso.</p></div>
+  </div>
+
   if (!token || !user) return <Login onEnter={handleLogin}/>
 
   let content
