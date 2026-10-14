@@ -657,11 +657,8 @@ function StudentDetail({ setPage, backend, studentId }) {
 }
 
 function ExerciseLibrary({ setPage }) {
-  const [query,setQuery]=useState('')
-  const filtered=exercises.filter(e=>e.name.toLowerCase().includes(query.toLowerCase()))
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>Encontre exercícios por nome, grupo muscular ou categoria.</p></div><button className="primary-btn"><Video size={18}/> Adicionar vídeo próprio</button></section>
-    <div className="toolbar"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar exercício por nome"/></div><button className="filter">Grupo muscular <ChevronDown size={15}/></button><button className="filter">Categoria <ChevronDown size={15}/></button></div>
-    <div className="exercise-library-grid">{filtered.map(ex=><article className="library-card" key={ex.id}><div className="library-video"><Dumbbell size={34}/><button><Play size={17} fill="currentColor"/></button></div><div className="library-copy"><div><Badge tone="light">{ex.group}</Badge><Badge tone="gray">{ex.category}</Badge></div><h3>{ex.name}</h3><p>Execução guiada com foco em amplitude, controle e estabilidade.</p><div><span>Biblioteca Atlas</span><button onClick={()=>setPage('builder')}><Plus size={15}/> Usar</button></div></div></article>)}</div>
+  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>A biblioteca ainda não possui exercícios persistidos no backend.</p></div></section>
+    <section className="panel empty-state"><BookOpen size={34}/><h3>Nenhum exercício cadastrado</h3><p>Para testar uma prescrição sem mocks, adicione exercícios manualmente ao criar o treino.</p><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Criar treino</button></section>
   </div>
 }
 
