@@ -464,38 +464,80 @@ function WorkoutBuilder({ setPage }) {
 }
 
 function AppShell() {
-  const [profile,setProfile]=useState('student')
+  const [token,setToken]=useState('')
+  const [user,setUser]=useState(null)
   const [page,setPage]=useState('home')
-  const [logged,setLogged]=useState(false)
+  const [backend,setBackend]=useState({ invitations:[], students:[], workouts:[], availability:[] })
+  const [backendError,setBackendError]=useState('')
 
-  const changeProfile = p => {
-    setProfile(p)
-    setPage(p === 'student' ? 'home' : 'dashboard')
+  const profile = user?.role === 'trainer' ? 'trainer' : 'student'
+
+  const refreshBackend = async (nextToken = token, nextUser = user) => {
+    if (!nextToken || !nextUser) return
+    setBackendError('')
+    try {
+      if (nextUser.role === 'trainer') {
+        const [invitations, studentsData, workouts] = await Promise.all([
+          apiRequest('/invitations',{token:nextToken}),
+          apiRequest('/trainer/students',{token:nextToken}),
+          apiRequest('/workouts',{token:nextToken}),
+        ])
+        setBackend({ invitations, students:studentsData, workouts, availability:[] })
+      } else {
+        const [invitations, availabilityData, workouts] = await Promise.all([
+          apiRequest('/invitations',{token:nextToken}),
+          apiRequest('/availability',{token:nextToken}),
+          apiRequest('/workouts',{token:nextToken}),
+        ])
+        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [] })
+      }
+    } catch (e) {
+      setBackendError(e.message)
+    }
   }
 
-  if (!logged) return <Login onEnter={()=>setLogged(true)}/>
+  useEffect(()=>{ refreshBackend() },[token,user?.id])
+
+  const handleLogin = (nextToken,nextUser) => {
+    setToken(nextToken)
+    setUser(nextUser)
+    setPage(nextUser.role === 'trainer' ? 'dashboard' : 'home')
+  }
+
+  const logout = async () => {
+    try { if (token) await apiRequest('/auth/logout',{token,method:'POST'}) } catch {}
+    setToken('')
+    setUser(null)
+    setBackend({ invitations:[], students:[], workouts:[], availability:[] })
+    setPage('home')
+  }
+
+  if (!token || !user) return <Login onEnter={handleLogin}/>
 
   let content
   if (profile === 'student') {
-    content = page === 'home' ? <StudentHome setPage={setPage}/> :
-      page === 'workout' ? <WorkoutExecution setPage={setPage}/> :
+    content = page === 'home' ? <StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend}/> :
+      page === 'workout' ? <WorkoutExecution setPage={setPage} token={token} workout={backend.workouts[0]} refreshBackend={refreshBackend}/> :
       page === 'history' ? <StudentHistory/> :
       page === 'progress' ? <StudentProgress/> :
       <Messages/>
   } else {
     content = page === 'dashboard' ? <TrainerDashboard setPage={setPage}/> :
-      page === 'students' ? <Students setPage={setPage}/> :
+      page === 'students' ? <Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/> :
       page === 'studentDetail' ? <StudentDetail setPage={setPage}/> :
       page === 'library' ? <ExerciseLibrary setPage={setPage}/> :
-      page === 'workouts' ? <Workouts setPage={setPage}/> :
-      page === 'builder' ? <WorkoutBuilder setPage={setPage}/> :
+      page === 'workouts' ? <Workouts setPage={setPage} backend={backend}/> :
+      page === 'builder' ? <WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/> :
       <Messages trainer/>
   }
 
   return <div className="app-shell">
-    <Topbar profile={profile} setProfile={changeProfile} onLogout={()=>setLogged(false)}/>
+    <Topbar profile={profile} user={user} onLogout={logout}/>
     <SideNav profile={profile} page={page} setPage={setPage}/>
-    <main className="app-main">{content}</main>
+    <main className="app-main">
+      {backendError && <div className="app-error-banner">{backendError}</div>}
+      {content}
+    </main>
     <BottomNav profile={profile} page={page} setPage={setPage}/>
   </div>
 }
