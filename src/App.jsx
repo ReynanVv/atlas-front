@@ -806,6 +806,7 @@ function AppShell() {
   const [page,setPage]=useState('home')
   const [backend,setBackend]=useState({ invitations:[], students:[], workouts:[], availability:[] })
   const [backendError,setBackendError]=useState('')
+  const [selectedStudentId,setSelectedStudentId]=useState('')
 
   const profile = user?.role === 'trainer' ? 'trainer' : 'student'
 
@@ -841,6 +842,8 @@ function AppShell() {
     setPage(nextUser.role === 'trainer' ? 'dashboard' : 'home')
   }
 
+  const openStudent = id => { setSelectedStudentId(id); setPage('studentDetail') }
+
   const logout = async () => {
     try { if (token) await apiRequest('/auth/logout',{token,method:'POST'}) } catch {}
     setToken('')
@@ -856,17 +859,17 @@ function AppShell() {
   if (profile === 'student') {
     content = page === 'home' ? <StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend}/> :
       page === 'workout' ? <WorkoutExecution setPage={setPage} token={token} workout={backend.workouts[0]} refreshBackend={refreshBackend}/> :
-      page === 'history' ? <StudentHistory/> :
-      page === 'progress' ? <StudentProgress/> :
-      <Messages/>
+      page === 'history' ? <StudentHistory backend={backend}/> :
+      page === 'progress' ? <StudentProgress backend={backend}/> :
+      <Messages backend={backend}/>
   } else {
-    content = page === 'dashboard' ? <TrainerDashboard setPage={setPage}/> :
-      page === 'students' ? <Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/> :
-      page === 'studentDetail' ? <StudentDetail setPage={setPage}/> :
+    content = page === 'dashboard' ? <TrainerDashboard setPage={setPage} user={user} backend={backend}/> :
+      page === 'students' ? <Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/> :
+      page === 'studentDetail' ? <StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId}/> :
       page === 'library' ? <ExerciseLibrary setPage={setPage}/> :
       page === 'workouts' ? <Workouts setPage={setPage} backend={backend}/> :
       page === 'builder' ? <WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/> :
-      <Messages trainer/>
+      <Messages trainer backend={backend}/>
   }
 
   return <div className="app-shell">
