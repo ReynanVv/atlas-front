@@ -732,6 +732,7 @@ function Workouts({ setPage, backend }) {
 
 function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const linkedStudents=backend.students || []
+  useEffect(()=>{ refreshBackend() },[])
   const [items,setItems]=useState([])
   const [studentQuery,setStudentQuery]=useState(linkedStudents[0]?.name || '')
   const [studentOpen,setStudentOpen]=useState(false)
@@ -903,6 +904,22 @@ function AppShell() {
   },[])
 
   useEffect(()=>{ refreshBackend() },[token,user?.id])
+
+  useEffect(()=>{
+    if(!token || !user) return
+    const refresh=()=>refreshBackend()
+    const onVisibility=()=>{ if(document.visibilityState==='visible') refresh() }
+    window.addEventListener('focus',refresh)
+    document.addEventListener('visibilitychange',onVisibility)
+    return()=>{
+      window.removeEventListener('focus',refresh)
+      document.removeEventListener('visibilitychange',onVisibility)
+    }
+  },[token,user?.id])
+
+  useEffect(()=>{
+    if(token && user) refreshBackend()
+  },[page])
 
   const handleLogin = (nextToken,nextUser) => {
     storeToken(nextToken)
