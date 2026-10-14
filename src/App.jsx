@@ -743,6 +743,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const [studentOpen,setStudentOpen]=useState(false)
   const [selectedStudentId,setSelectedStudentId]=useState('')
   const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
+  const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
   const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
   const [scheduledDays,setScheduledDays]=useState([])
