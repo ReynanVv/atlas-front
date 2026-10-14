@@ -648,3 +648,42 @@ button{color:inherit}
 .set-row-saved .set-check{background:#B8E400!important;color:#0B1B3A!important}
 .empty-state h2,.empty-state h3{margin:8px 0 4px}
 .empty-state p{color:var(--muted);margin:0 0 16px}
+
+
+/* Invitation onboarding */
+.invite-onboarding{padding:24px}
+.invite-flow-card{
+  width:min(620px,100%);background:#17283C;border:1px solid #2C3E55;border-radius:28px;
+  padding:30px;color:#fff;box-shadow:0 28px 70px rgba(0,0,0,.22)
+}
+.invite-flow-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:34px}
+.invite-flow-card h1{font-size:clamp(34px,7vw,54px);line-height:1.02;margin:8px 0 12px;color:#fff;letter-spacing:-2px}
+.invite-flow-card>p,.invite-flow-card p{color:#B7C0CA;line-height:1.6}
+.invite-flow-card .field-label{color:#E9ECF2}
+.invite-flow-card .input-wrap{background:#0F1D2E;border-color:#354559}
+.invite-flow-card .input-wrap input{color:#fff}
+.invite-flow-card .disabled-input{opacity:.78}
+.invite-existing{display:block;margin-top:18px;color:#B7C0CA;line-height:1.5}
+.invite-loading{margin-top:36px}
+.invite-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin:24px 0 14px}
+.invite-day-grid button{
+  min-height:72px;border:1px solid #405067;border-radius:12px;background:#0F1D2E;color:#C7CED6;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px
+}
+.invite-day-grid button strong{font-size:16px}.invite-day-grid button small{font-size:9px}
+.invite-day-grid button.active{background:#B8E400;color:#0B1B3A;border-color:#B8E400}
+.invite-availability-summary{display:flex;flex-direction:column;gap:3px;margin-bottom:18px;color:#E9ECF2}
+.invite-availability-summary span{color:#AEB8C4;font-size:11px}
+.invite-link-success{display:flex;align-items:center;gap:10px;background:#E9ECF2;border-radius:12px;padding:12px;margin:16px 0}
+.invite-link-success svg{color:#0B1B3A}.invite-link-success div{display:flex;flex-direction:column;text-align:left}
+.invite-link-success strong{color:#0B1B3A}.invite-link-success span{font-size:10px;color:#69737A}
+.official-invite-link{margin-bottom:12px}
+.official-invite-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.invite-link-actions{display:grid;gap:8px}
+.invite-modal .helper-text{display:block;margin-top:10px;text-align:center}
+@media(max-width:680px){
+  .invite-onboarding{padding:0}
+  .invite-flow-card{min-height:100vh;border-radius:0;padding:24px 20px}
+  .invite-day-grid{gap:5px}
+  .invite-day-grid button{min-height:64px}
+}
