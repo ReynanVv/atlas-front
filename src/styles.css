@@ -424,7 +424,7 @@ button{color:inherit}
 }
 
 .progress-ring{
-  background:conic-gradient(#B8E400 0 86%,#E9ECF2 86% 100%);
+  background:conic-gradient(#B8E400 0 var(--progress,0%),#E9ECF2 var(--progress,0%) 100%);
   box-shadow:0 8px 20px rgba(11,27,58,.16);
 }
 
@@ -519,7 +519,7 @@ button{color:inherit}
 }
 
 .progress-ring{
-  background:conic-gradient(#B8E400 0 86%,#E9ECF2 86% 100%) !important;
+  background:conic-gradient(#B8E400 0 var(--progress,0%),#E9ECF2 var(--progress,0%) 100%) !important;
 }
 
 .bottom-nav button.active,
@@ -607,7 +607,7 @@ button{color:inherit}
 
 /* Progress uses only navy + solid lime */
 .progress-ring{
-  background:conic-gradient(#B8E400 0 86%,#E9ECF2 86% 100%) !important;
+  background:conic-gradient(#B8E400 0 var(--progress,0%),#E9ECF2 var(--progress,0%) 100%) !important;
   box-shadow:none !important;
 }
 .bar i{
