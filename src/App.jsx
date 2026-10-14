@@ -388,15 +388,62 @@ function TrainerDashboard({ setPage }) {
   </div>
 }
 
-function Students({ setPage }) {
+function Students({ setPage, token, backend, refreshBackend }) {
   const [invite, setInvite] = useState(false)
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Modelos, frequência e evolução em uma única visão.</p></div><button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button></section>
-    <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos os modelos <ChevronDown size={15}/></button><button className="filter">Aderência <ChevronDown size={15}/></button></div>
-    <div className="student-card-grid">{students.map((s)=><article className="student-card clickable" key={s.name} onClick={()=>setPage('studentDetail')}><div className="student-card-top"><Avatar initials={s.initials}/><div><h3>{s.name}</h3><p>Modelo {s.model}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
-      <div className="student-kpis"><div><span>Aderência</span><strong>{s.adherence}%</strong></div><div><span>Último treino</span><strong>{s.last.split(',')[0]}</strong></div><div><span>Volume</span><strong>{s.trend}</strong></div></div>
-      <div className="bar"><i style={{width:`${s.adherence}%`}}></i></div><div className="student-actions"><button onClick={(e)=>{e.stopPropagation();setPage('studentDetail')}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
-    </article>)}</div>
-    {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setInvite(false)}><X size={18}/></button><div className="modal-icon"><Share2 size={23}/></div><h2>Convidar novo aluno</h2><p>Compartilhe este link. Ao criar a conta, a pessoa será vinculada ao seu perfil de treinador.</p><div className="copy-link"><span>atlas.fit/convite/amanda-7f3a</span><button>Copiar</button></div><button className="primary-btn full">Compartilhar convite <Share2 size={17}/></button></div></div>}
+  const [email,setEmail]=useState('aluno@atlas.test')
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
+  const [message,setMessage]=useState('')
+  const linkedStudents=backend.students || []
+  const pendingInvites=(backend.invitations || []).filter(i=>i.status==='Pending')
+
+  const sendInvite=async()=>{
+    setBusy(true);setError('');setMessage('')
+    try{
+      await apiRequest('/invitations',{token,method:'POST',body:{studentEmail:email}})
+      setMessage('Convite enviado. Entre como Aluno Atlas para aceitar.')
+      await refreshBackend()
+      setInvite(false)
+    }catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+
+  return <div className="page-stack">
+    <section className="page-heading action-heading">
+      <div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Convites, disponibilidade e treinos vinculados ao backend.</p></div>
+      <button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button>
+    </section>
+
+    {error && <div className="app-error-banner">{error}</div>}
+    {message && <div className="app-success-banner">{message}</div>}
+
+    {pendingInvites.length>0 && <section className="panel">
+      <div className="panel-head"><div><h3>Convites pendentes</h3><p>Aguardando aceite dos alunos.</p></div><Badge>{pendingInvites.length}</Badge></div>
+      <div className="compact-list">{pendingInvites.map(inv=><div className="compact-row" key={inv.id}><div><strong>{inv.studentEmail}</strong><small>Convite enviado</small></div><Badge tone="light">Pendente</Badge></div>)}</div>
+    </section>}
+
+    <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
+
+    {linkedStudents.length ? <div className="student-card-grid">{linkedStudents.map((st)=><article className="student-card clickable" key={st.id} onClick={()=>setPage('studentDetail')}>
+      <div className="student-card-top"><Avatar initials="AA"/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
+      <div className="student-kpis">
+        <div><span>Disponibilidade</span><strong>{st.availability?.length || 0} dias</strong></div>
+        <div><span>Treinos</span><strong>{st.workoutCount || 0}</strong></div>
+        <div><span>Status</span><strong>Vinculado</strong></div>
+      </div>
+      <div className="routine-days mini-routine">{['D','S','T','Q','Q','S','S'].map((d,i)=><span key={i} className={st.availability?.includes(i)?'active':''}>{d}</span>)}</div>
+      <div className="student-actions"><button onClick={(e)=>{e.stopPropagation();setPage('studentDetail')}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
+    </article>)}</div> : <section className="panel empty-state">
+      <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Envie o convite e peça para o aluno aceitar no perfil Aluno Atlas.</p>
+    </section>}
+
+    {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" onClick={()=>setInvite(false)}><X size={18}/></button>
+      <div className="modal-icon"><Share2 size={23}/></div><h2>Convidar novo aluno</h2>
+      <p>Informe o e-mail do aluno. Para testar o fluxo use <strong>aluno@atlas.test</strong>.</p>
+      <label className="field-label">E-mail do aluno</label>
+      <div className="input-wrap"><Mail size={18}/><input value={email} onChange={e=>setEmail(e.target.value)} /></div>
+      <button className="primary-btn full" disabled={!email || busy} onClick={sendInvite}>{busy?'Enviando...':'Enviar convite'} <Share2 size={17}/></button>
+    </div></div>}
   </div>
 }
 
