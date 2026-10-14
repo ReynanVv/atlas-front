@@ -25,28 +25,6 @@ async function apiRequest(path, { token, method = 'GET', body } = {}) {
 }
 
 
-const studentWorkouts = [
-  { name: 'Upper A — Peito & Costas', coach: 'Rafael Monteiro', day: 'Hoje', intensity: 'Moderada', duration: '52 min', status: 'Pendente' },
-  { name: 'Lower A — Quadríceps', coach: 'Rafael Monteiro', day: 'Qua, 08 out.', intensity: 'Alta', duration: '58 min', status: 'Pendente' },
-  { name: 'Upper B — Ombros & Braços', coach: 'Camila Alves', day: 'Sex, 10 out.', intensity: 'Moderada', duration: '47 min', status: 'Pendente' },
-]
-
-const exercises = [
-  { id: 1, name: 'Supino reto com halteres', group: 'Peitoral', category: 'Força', intensity: 'Moderada', sets: 4, reps: '10', weight: '18 kg', rest: '90s' },
-  { id: 2, name: 'Remada baixa', group: 'Costas', category: 'Força', intensity: 'Moderada', sets: 4, reps: '12', weight: '42 kg', rest: '75s' },
-  { id: 3, name: 'Supino inclinado', group: 'Peitoral', category: 'Força', intensity: 'Alta', sets: 3, reps: '8–10', weight: '16 kg', rest: '90s' },
-  { id: 4, name: 'Puxada alta', group: 'Costas', category: 'Força', intensity: 'Moderada', sets: 3, reps: '12', weight: '38 kg', rest: '75s' },
-  { id: 5, name: 'Elevação lateral', group: 'Ombros', category: 'Isolamento', intensity: 'Leve', sets: 3, reps: '15', weight: '7 kg', rest: '60s' },
-  { id: 6, name: 'Agachamento livre', group: 'Pernas', category: 'Força', intensity: 'Alta', sets: 4, reps: '8', weight: '72 kg', rest: '120s' },
-]
-
-const students = [
-  { name: 'Marina Costa', model: 'AB', adherence: 92, last: 'Hoje, 07:40', trend: '+12%', initials: 'MC' },
-  { name: 'Lucas Nunes', model: 'FULLBODY', adherence: 81, last: 'Ontem, 19:12', trend: '+8%', initials: 'LN' },
-  { name: 'Bianca Melo', model: 'ABC', adherence: 76, last: 'Ontem, 06:55', trend: '+15%', initials: 'BM' },
-  { name: 'Diego Ramos', model: 'AB', adherence: 64, last: '03 out.', trend: '+4%', initials: 'DR' },
-]
-
 function Logo({ compact = false }) {
   return <div className={`logo ${compact ? 'compact' : ''}`}>
     <span className="logo-mark"><Activity size={compact ? 18 : 22} strokeWidth={2.5}/></span>
