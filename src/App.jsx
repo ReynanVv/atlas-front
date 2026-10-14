@@ -782,6 +782,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
 }
 
 function AppShell() {
+  const inviteToken = new URLSearchParams(window.location.search).get('invite')
   const [token,setToken]=useState('')
   const [user,setUser]=useState(null)
   const [page,setPage]=useState('home')
@@ -830,6 +831,7 @@ function AppShell() {
     setPage('home')
   }
 
+  if (inviteToken) return <InviteOnboarding inviteToken={inviteToken} onComplete={handleLogin}/>
   if (!token || !user) return <Login onEnter={handleLogin}/>
 
   let content
