@@ -125,25 +125,17 @@ function Login({ onEnter }) {
   </div>
 }
 
-function Topbar({ profile, setProfile, onLogout }) {
-  const [open, setOpen] = useState(false)
+function Topbar({ profile, user, onLogout }) {
   return <header className="topbar">
     <Logo/>
     <div className="topbar-actions">
       <button className="icon-btn"><Bell size={19}/><span className="notification-dot"></span></button>
       <div className="profile-switch">
-        <button className="profile-trigger" onClick={() => setOpen(v => !v)}>
-          <Avatar initials="AS" size="sm"/>
-          <span><small>Perfil ativo</small><strong>{profile === 'student' ? 'Aluno' : 'Treinador'}</strong></span>
-          <ChevronDown size={16}/>
-        </button>
-        {open && <div className="profile-menu">
-          <small>Trocar perfil</small>
-          <button className={profile === 'student' ? 'active' : ''} onClick={() => {setProfile('student'); setOpen(false)}}><UserRound size={17}/> Aluno {profile === 'student' && <Check size={15}/>}</button>
-          <button className={profile === 'trainer' ? 'active' : ''} onClick={() => {setProfile('trainer'); setOpen(false)}}><UsersRound size={17}/> Treinador {profile === 'trainer' && <Check size={15}/>}</button>
-          <hr/>
-          <button onClick={onLogout}><LogOut size={17}/> Sair</button>
-        </div>}
+        <div className="profile-trigger static-profile">
+          <Avatar initials={profile === 'student' ? 'AA' : 'PA'} size="sm"/>
+          <span><small>{profile === 'student' ? 'Aluno' : 'Treinador'}</small><strong>{user?.name || 'Atlas'}</strong></span>
+        </div>
+        <button className="icon-btn logout-btn" onClick={onLogout} title="Sair"><LogOut size={18}/></button>
       </div>
     </div>
   </header>
