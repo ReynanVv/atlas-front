@@ -402,7 +402,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
       <section className="panel">
         <div className="panel-head"><div><h3>Resumo</h3><p>Dados do seu fluxo atual.</p></div><Trophy size={20}/></div>
         <div className="month-summary">
-          <div className="progress-ring"><span>{workouts.length ? Math.round(completedCount/workouts.length*100) : 0}<small>%</small></span></div>
+          <div className="progress-ring" style={{'--progress':`${workouts.length ? Math.round(completedCount/workouts.length*100) : 0}%`}}><span>{workouts.length ? Math.round(completedCount/workouts.length*100) : 0}<small>%</small></span></div>
           <div><strong>{completedCount} de {workouts.length} treinos</strong><span>{completedCount ? 'Treinos concluídos ficam registrados no histórico.' : 'Conclua seu primeiro treino para iniciar seu histórico.'}</span></div>
         </div>
       </section>
