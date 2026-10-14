@@ -775,3 +775,32 @@ button{color:inherit}
     font-size:10px;
   }
 }
+
+
+/* Session restore */
+.session-restore-screen{
+  display:grid;
+  place-items:center;
+  padding:24px;
+}
+.session-restore-card{
+  width:min(420px,100%);
+  background:#17283C;
+  border:1px solid #2C3E55;
+  border-radius:24px;
+  padding:28px;
+  color:#fff;
+  text-align:center;
+  box-shadow:0 28px 70px rgba(0,0,0,.18);
+}
+.session-restore-card .logo{
+  justify-content:center;
+  margin-bottom:24px;
+}
+.session-restore-card h2{
+  margin:8px 0 6px;
+}
+.session-restore-card p{
+  margin:0;
+  color:#AEB8C4;
+}
