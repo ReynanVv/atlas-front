@@ -277,40 +277,114 @@ function StudentHome({ setPage, token, user, backend, refreshBackend }) {
   </div>
 }
 
-function WorkoutExecution({ setPage }) {
-  const [completed, setCompleted] = useState([1])
+function WorkoutExecution({ setPage, token, workout, refreshBackend }) {
   const [timer, setTimer] = useState(false)
-  const [openExercise, setOpenExercise] = useState(1)
-  const toggle = id => setCompleted(v => v.includes(id) ? v.filter(x => x !== id) : [...v, id])
+  const [openExercise, setOpenExercise] = useState(null)
+  const [session,setSession]=useState(null)
+  const [drafts,setDrafts]=useState({})
+  const [saved,setSaved]=useState({})
+  const [loading,setLoading]=useState(true)
+  const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
+
+  useEffect(()=>{
+    let cancelled=false
+    const loadSession=async()=>{
+      if(!workout){setLoading(false);return}
+      try{
+        const started=workout.latestSession && !workout.latestSession.completedAt
+          ? workout.latestSession
+          : await apiRequest(`/workouts/${workout.id}/start`,{token,method:'POST'})
+        const data=await apiRequest(`/sessions/${started.id}`,{token})
+        if(cancelled)return
+        setSession(data)
+        setOpenExercise(data.exercises?.[0]?.id || null)
+        const nextDrafts={},nextSaved={}
+        for(const ex of data.exercises || []){
+          for(let n=1;n<=ex.sets;n++){
+            const log=(data.logs||[]).find(item=>item.exerciseId===ex.id && item.setNumber===n)
+            const key=`${ex.id}:${n}`
+            nextDrafts[key]={reps:log?.reps ?? ex.reps,weight:log?.weight ?? ex.suggestedWeight}
+            if(log?.completed)nextSaved[key]=true
+          }
+        }
+        setDrafts(nextDrafts);setSaved(nextSaved)
+      }catch(e){if(!cancelled)setError(e.message)}finally{if(!cancelled)setLoading(false)}
+    }
+    loadSession()
+    return()=>{cancelled=true}
+  },[workout?.id])
+
+  const saveSet=async(exerciseId,setNumber)=>{
+    if(!session)return
+    const key=`${exerciseId}:${setNumber}`
+    const draft=drafts[key] || {}
+    setBusy(key);setError('')
+    try{
+      await apiRequest(`/sessions/${session.id}/exercises/${exerciseId}/sets/${setNumber}`,{
+        token,method:'PUT',body:{reps:Number(draft.reps)||0,weight:Number(draft.weight)||0}
+      })
+      setSaved(v=>({...v,[key]:true}))
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const finish=async()=>{
+    if(!session)return
+    setBusy('finish');setError('')
+    try{
+      await apiRequest(`/sessions/${session.id}/complete`,{token,method:'POST',body:{notes:'Treino concluído pelo aluno no Atlas.'}})
+      await refreshBackend()
+      setPage('home')
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  if(loading)return <div className="page-stack"><section className="panel empty-state"><Dumbbell size={30}/><h2>Preparando treino...</h2><p>Carregando sua sessão no backend.</p></section></div>
+  if(!workout)return <div className="page-stack"><button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar ao início</button><section className="panel empty-state"><h2>Nenhum treino disponível</h2><p>Aguarde uma prescrição do seu professor.</p></section></div>
+  if(error && !session)return <div className="page-stack"><button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar ao início</button><div className="app-error-banner">{error}</div></div>
+
+  const sessionExercises=session?.exercises || []
+  const totalSets=sessionExercises.reduce((sum,ex)=>sum+Number(ex.sets||0),0)
+  const savedCount=Object.values(saved).filter(Boolean).length
+  const exerciseComplete=ex=>Array.from({length:ex.sets},(_,i)=>saved[`${ex.id}:${i+1}`]).every(Boolean)
+
   return <div className="page-stack">
     <button className="back-link" onClick={() => setPage('home')}><ArrowLeft size={17}/> Voltar ao início</button>
+    {error && <div className="app-error-banner">{error}</div>}
     <section className="workout-header">
-      <div><div className="today-meta"><Badge>Em andamento</Badge><span><Clock3 size={15}/> 12:34</span></div><h1>Upper A — Peito & Costas</h1><p>Complete cada série e registre sua carga real.</p></div>
+      <div><div className="today-meta"><Badge>Em andamento</Badge><span><Dumbbell size={15}/> {workout.model}</span></div><h1>{workout.name}</h1><p>{workout.notes || 'Complete cada série e registre sua carga real.'}</p></div>
       <button className="secondary-btn" onClick={() => setTimer(true)}><TimerReset size={18}/> Descanso</button>
     </section>
-    <div className="workout-progress"><div><span>Progresso do treino</span><strong>{completed.length}/{exercises.slice(0,5).length} exercícios</strong></div><div className="bar"><i style={{width:`${completed.length/5*100}%`}}></i></div></div>
+    <div className="workout-progress"><div><span>Progresso do treino</span><strong>{savedCount}/{totalSets} séries</strong></div><div className="bar"><i style={{width:`${totalSets?savedCount/totalSets*100:0}%`}}></i></div></div>
 
     <div className="exercise-stack">
-      {exercises.slice(0,5).map((ex,idx) => <section key={ex.id} className={`exercise-card ${completed.includes(ex.id) ? 'completed' : ''}`}>
+      {sessionExercises.map((ex,idx) => <section key={ex.id} className={`exercise-card ${exerciseComplete(ex) ? 'completed' : ''}`}>
         <button className="exercise-summary" onClick={() => setOpenExercise(openExercise === ex.id ? null : ex.id)}>
-          <span className="exercise-index">{completed.includes(ex.id) ? <Check size={17}/> : idx+1}</span>
-          <div><strong>{ex.name}</strong><small>{ex.sets} séries · {ex.reps} reps · {ex.rest} descanso</small></div>
-          <button className="video-icon" onClick={(e) => e.stopPropagation()}><Video size={18}/></button>
+          <span className="exercise-index">{exerciseComplete(ex) ? <Check size={17}/> : idx+1}</span>
+          <div><strong>{ex.name}</strong><small>{ex.sets} séries · {ex.reps} reps · {ex.restSeconds}s descanso</small></div>
+          <span className="video-icon"><Video size={18}/></span>
           <ChevronDown size={18} className={openExercise === ex.id ? 'rotate' : ''}/>
         </button>
         {openExercise === ex.id && <div className="exercise-detail">
           <div className="set-table">
             <div className="set-row header"><span>Série</span><span>Carga</span><span>Reps</span><span></span></div>
-            {[1,2,3,4].slice(0,ex.sets).map(s => <div className="set-row" key={s}><strong>{s}</strong><input defaultValue={ex.weight.replace(' kg','')}/><input defaultValue={ex.reps.replace('–10','')}/><button className="set-check"><Check size={15}/></button></div>)}
+            {Array.from({length:ex.sets},(_,i)=>i+1).map(n => {
+              const key=`${ex.id}:${n}`
+              const draft=drafts[key] || {}
+              return <div className={`set-row ${saved[key]?'set-row-saved':''}`} key={n}>
+                <strong>{n}</strong>
+                <input type="number" step="0.5" value={draft.weight ?? ''} onChange={e=>{setDrafts(v=>({...v,[key]:{...v[key],weight:e.target.value}}));setSaved(v=>({...v,[key]:false}))}}/>
+                <input type="number" value={draft.reps ?? ''} onChange={e=>{setDrafts(v=>({...v,[key]:{...v[key],reps:e.target.value}}));setSaved(v=>({...v,[key]:false}))}}/>
+                <button className="set-check" disabled={busy===key} onClick={()=>saveSet(ex.id,n)}>{busy===key?'…':<Check size={15}/>}</button>
+              </div>
+            })}
           </div>
-          <div className="exercise-note"><span><MessageCircle size={15}/> Observação do treinador</span><p>Controle a descida por 2 segundos e mantenha as escápulas apoiadas.</p></div>
-          <button className={completed.includes(ex.id) ? 'secondary-btn' : 'primary-btn'} onClick={() => toggle(ex.id)}>{completed.includes(ex.id) ? 'Marcar como pendente' : 'Concluir exercício'} <Check size={17}/></button>
+          <div className="exercise-note"><span><MessageCircle size={15}/> Prescrição</span><p>Carga sugerida: {ex.suggestedWeight} kg. Registre o que realmente executou.</p></div>
         </div>}
       </section>)}
     </div>
-    <button className="finish-btn">Finalizar treino <Trophy size={18}/></button>
+    <button className="finish-btn" disabled={savedCount<totalSets || busy==='finish'} onClick={finish}>{busy==='finish'?'Finalizando...':'Finalizar treino'} <Trophy size={18}/></button>
     {timer && <div className="modal-backdrop" onClick={() => setTimer(false)}><div className="timer-modal" onClick={e => e.stopPropagation()}>
-      <button className="modal-close" onClick={() => setTimer(false)}><X size={18}/></button><span className="eyebrow">Tempo de descanso</span><div className="timer-circle">01:12</div><p>Meta: 90 segundos</p><div className="timer-actions"><button>-15s</button><button className="primary-btn"><Play size={16} fill="currentColor"/> Pausar</button><button>+15s</button></div>
+      <button className="modal-close" onClick={() => setTimer(false)}><X size={18}/></button><span className="eyebrow">Tempo de descanso</span><div className="timer-circle">01:30</div><p>Use o tempo de descanso indicado na prescrição.</p><div className="timer-actions"><button>-15s</button><button className="primary-btn"><Play size={16} fill="currentColor"/> Pausar</button><button>+15s</button></div>
     </div></div>}
   </div>
 }
