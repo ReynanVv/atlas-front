@@ -623,3 +623,28 @@ button{color:inherit}
   background:#E9ECF2 !important;
   background-image:none !important;
 }
+
+
+/* Official backend integration */
+.auth-error,.app-error-banner,.app-success-banner{
+  border-radius:12px;padding:11px 13px;font-size:12px;font-weight:800;line-height:1.45
+}
+.auth-error,.app-error-banner{background:#FFE7E4;color:#8B302B;border:1px solid #F3C9C5}
+.app-success-banner{background:#E9ECF2;color:#0B1B3A;border:1px solid #D8DDE4}
+.demo-role-row{margin-top:4px}
+.demo-role-row button{min-height:50px}
+.static-profile{cursor:default!important}
+.logout-btn{margin-left:6px}
+.invite-official-card .primary-btn{margin-top:16px}
+.empty-today-card{min-height:260px}
+.mini-routine{margin-top:14px}
+.mini-routine span{aspect-ratio:auto;height:30px;border-radius:8px;font-size:9px}
+.selectable-days button{
+  aspect-ratio:1;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--muted);font-size:10px;font-weight:800
+}
+.selectable-days button:disabled{opacity:.35;cursor:not-allowed}
+.selectable-days button.active{background:#B8E400!important;color:#0B1B3A!important;border-color:#B8E400!important}
+.set-row-saved{background:#F4F6F8}
+.set-row-saved .set-check{background:#B8E400!important;color:#0B1B3A!important}
+.empty-state h2,.empty-state h3{margin:8px 0 4px}
+.empty-state p{color:var(--muted);margin:0 0 16px}
