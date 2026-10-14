@@ -686,24 +686,31 @@ function Workouts({ setPage, backend }) {
 
 function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const linkedStudents=backend.students || []
-  const [items,setItems]=useState(exercises.slice(0,3))
+  const [items,setItems]=useState([])
   const [studentQuery,setStudentQuery]=useState(linkedStudents[0]?.name || '')
   const [studentOpen,setStudentOpen]=useState(false)
   const [selectedStudentId,setSelectedStudentId]=useState(linkedStudents[0]?.id || '')
-  const [workoutName,setWorkoutName]=useState('Upper A — Peito & Costas')
+  const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
   const [scheduledDays,setScheduledDays]=useState(linkedStudents[0]?.availability?.slice(0,2) || [])
-  const [notes,setNotes]=useState('Intensidade moderada. Foco em progressão de carga e controle da fase excêntrica.')
+  const [notes,setNotes]=useState('')
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
+
+  const makeExercise=()=>({
+    id:(globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+    name:'', group:'', sets:'3', reps:'10', weight:'0', rest:'60'
+  })
+  const addExercise=()=>setItems(v=>[...v,makeExercise()])
   const remove=id=>setItems(v=>v.filter(e=>e.id!==id))
+  const updateItem=(id,key,value)=>setItems(v=>v.map(ex=>ex.id===id?{...ex,[key]:value}:ex))
+
   const sortedStudents=useMemo(()=>[...linkedStudents].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[linkedStudents])
   const matches=sortedStudents.filter(st=>st.name.toLowerCase().includes(studentQuery.toLowerCase()))
   const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId) || linkedStudents[0]
   const availableDays=selectedStudent?.availability || []
   const dayLabels=['D','S','T','Q','Q','S','S']
   const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
-  const templateNames=['Upper A — Peito & Costas','Lower A — Quadríceps','Upper B — Ombros & Braços','Full Body — Base','Push — Hipertrofia']
 
   useEffect(()=>{
     if(!selectedStudentId && linkedStudents[0]){
@@ -727,21 +734,25 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
 
   const saveWorkout=async()=>{
     if(!selectedStudent?.id) { setError('Vincule um aluno antes de criar o treino.'); return }
+    if(!workoutName.trim()) { setError('Informe o nome do treino.'); return }
     if(!scheduledDays.length) { setError('Selecione ao menos um dia disponível do aluno.'); return }
+    if(!items.length) { setError('Adicione pelo menos um exercício.'); return }
+    if(items.some(ex=>!ex.name.trim())) { setError('Preencha o nome de todos os exercícios.'); return }
+
     setBusy(true);setError('')
     try{
       await apiRequest('/workouts',{token,method:'POST',body:{
         studentId:selectedStudent.id,
-        name:workoutName,
+        name:workoutName.trim(),
         model,
-        notes,
+        notes:notes.trim(),
         scheduledDays,
         exercises:items.map(ex=>({
-          name:ex.name,
+          name:ex.name.trim(),
           sets:Math.max(1,Number.parseInt(ex.sets,10)||1),
-          reps:Math.max(1,Number.parseInt(String(ex.reps),10)||1),
+          reps:Math.max(1,Number.parseInt(ex.reps,10)||1),
           suggestedWeight:Math.max(0,Number.parseFloat(String(ex.weight).replace(',','.'))||0),
-          restSeconds:Math.max(0,Number.parseInt(String(ex.rest),10)||0),
+          restSeconds:Math.max(0,Number.parseInt(ex.rest,10)||0),
         }))
       }})
       await refreshBackend()
@@ -751,23 +762,32 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
 
   if(!linkedStudents.length) return <div className="page-stack builder-page">
     <button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
-    <section className="panel empty-state"><UsersRound size={34}/><h2>Nenhum aluno vinculado</h2><p>Envie um convite na tela Alunos e aguarde o aceite antes de montar a prescrição.</p><button className="primary-btn" onClick={()=>setPage('students')}>Ir para Alunos</button></section>
+    <section className="panel empty-state"><UsersRound size={34}/><h2>Nenhum aluno vinculado</h2><p>Gere um link de convite e aguarde o aluno aceitar antes de montar a prescrição.</p><button className="primary-btn" onClick={()=>setPage('students')}>Ir para Alunos</button></section>
   </div>
 
   return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Escolha o aluno, respeite a disponibilidade informada e salve o treino diretamente no backend.</p></section>
+    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Nenhum exercício de exemplo é carregado. Cadastre somente o que deseja prescrever.</p></section>
     {error && <div className="app-error-banner">{error}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
-        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials="AA" size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentQuery} onFocus={()=>setStudentOpen(true)} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Buscar aluno"/><button type="button" onClick={()=>setStudentOpen(v=>!v)}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={(st.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()} size="xs"/><span>{st.name}</span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
         <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
-        <label className="span-2"><span>Nome do treino / treino já criado</span><select value={workoutName} onChange={e=>setWorkoutName(e.target.value)}>{templateNames.map(t=><option key={t}>{t}</option>)}</select><small className="helper-text">Você pode usar um nome já criado como base e ajustar antes de salvar.</small></label>
-        <label><span>Tempo estimado</span><input defaultValue="52 min"/></label>
-        <label><span>Posição na rotina</span><select><option>Treino A</option><option>Treino B</option><option>Treino C</option></select></label>
-        <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)}/></label>
+        <label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Treino A — Peito e costas"/></label>
+        <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações para o aluno"/></label>
       </div></section>
-      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Esses exercícios serão persistidos junto com a prescrição.</p></div><button className="secondary-btn compact" type="button"><Plus size={16}/> Adicionar exercício</button></div>
-        <div className="builder-exercises">{items.map((ex,idx)=><div className="builder-exercise" key={ex.id}><span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span><div className="builder-ex-main"><strong>{ex.name}</strong><small>{ex.group}</small></div><label><small>Séries</small><input defaultValue={ex.sets}/></label><label><small>Reps</small><input defaultValue={ex.reps}/></label><label><small>Carga</small><input defaultValue={ex.weight}/></label><label><small>Descanso</small><input defaultValue={ex.rest}/></label><button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button></div>)}</div>
+
+      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Adicione manualmente os exercícios desta prescrição.</p></div><button className="secondary-btn compact" type="button" onClick={addExercise}><Plus size={16}/> Adicionar exercício</button></div>
+        <div className="builder-exercises">
+          {items.length?items.map((ex,idx)=><div className="builder-exercise manual-exercise" key={ex.id}>
+            <span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span>
+            <div className="builder-ex-main editable-exercise-name"><input value={ex.name} onChange={e=>updateItem(ex.id,'name',e.target.value)} placeholder="Nome do exercício"/><input value={ex.group} onChange={e=>updateItem(ex.id,'group',e.target.value)} placeholder="Grupo muscular (opcional)"/></div>
+            <label><small>Séries</small><input type="number" min="1" value={ex.sets} onChange={e=>updateItem(ex.id,'sets',e.target.value)}/></label>
+            <label><small>Reps</small><input type="number" min="1" value={ex.reps} onChange={e=>updateItem(ex.id,'reps',e.target.value)}/></label>
+            <label><small>Carga kg</small><input type="number" min="0" step="0.5" value={ex.weight} onChange={e=>updateItem(ex.id,'weight',e.target.value)}/></label>
+            <label><small>Descanso s</small><input type="number" min="0" value={ex.rest} onChange={e=>updateItem(ex.id,'rest',e.target.value)}/></label>
+            <button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button>
+          </div>):<div className="empty-state compact-empty"><Dumbbell size={28}/><h3>Nenhum exercício adicionado</h3><p>Clique em “Adicionar exercício” para começar a prescrição.</p></div>}
+        </div>
       </section>
     </div>
     <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Escolhida por {selectedStudent?.name}.</p></div><Lock size={18}/></div>
@@ -775,7 +795,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
       <div className="availability-summary"><strong>{availableDays.length} dias disponíveis</strong><span>{availableDays.map(i=>dayNames[i]).join(' · ') || 'Ainda não informado'}</span></div>
       <div className="info-note">O aluno define quando consegue treinar. Selecione, dentro desses dias, quando este treino poderá ser executado.</div>
     </section>
-    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Dias</span><strong>{scheduledDays.map(i=>dayNames[i]).join(' · ') || '—'}</strong></div><button className="primary-btn full" disabled={busy||!scheduledDays.length} onClick={saveWorkout}>{busy?'Salvando...':'Salvar e prescrever'} <Check size={17}/></button></section></aside></div>
+    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Dias</span><strong>{scheduledDays.map(i=>dayNames[i]).join(' · ') || '—'}</strong></div><button className="primary-btn full" disabled={busy||!scheduledDays.length||!items.length||!workoutName.trim()} onClick={saveWorkout}>{busy?'Salvando...':'Salvar e prescrever'} <Check size={17}/></button></section></aside></div>
   </div>
 }
 
