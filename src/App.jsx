@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
@@ -449,78 +449,6 @@ function WorkoutBuilder({ setPage }) {
   </div>
 }
 
-const LIVE_API = 'https://controlfinance-app.onrender.com/atlas-api'
-const LIVE_DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
-const LIVE_DAY_SHORT = ['D','S','T','Q','Q','S','S']
-
-async function liveApi(path,{token,method='GET',body}={}){
-  const response=await fetch(`${LIVE_API}${path}`,{
-    method,
-    headers:{
-      ...(body?{'Content-Type':'application/json'}:{}),
-      ...(token?{Authorization:`Bearer ${token}`}:{})
-    },
-    body:body?JSON.stringify(body):undefined
-  })
-  const payload=response.status===204?null:await response.json().catch(()=>({}))
-  if(!response.ok) throw new Error(payload?.error||'Não foi possível concluir a ação.')
-  return payload
-}
-
-function LiveNotice({type='info',children}){
-  return children?<div className={`live-notice live-notice-${type}`}>{children}</div>:null
-}
-
-function LiveSteps({state}){
-  const items=[['Convite',state.invite],['Disponibilidade',state.availability],['Prescrição',state.workout],['Execução',state.execution]]
-  return <div className="live-steps">{items.map(([label,done],i)=><div className={done?'done':''} key={label}><span>{done?<Check size={14}/>:i+1}</span><strong>{label}</strong></div>)}</div>
-}
-
-function LiveHeader({user,onLogout}){
-  return <header className="live-header"><Logo/><div className="live-header-user">
-    <Avatar initials={user.role==='trainer'?'PA':'AA'} size="sm"/>
-    <div><small>{user.role==='trainer'?'Professor':'Aluno'}</small><strong>{user.name}</strong></div>
-    <button onClick={onLogout}><LogOut size={17}/> <span>Sair</span></button>
-  </div></header>
-}
-
-function LiveLogin({onLogin}){
-  const [loading,setLoading]=useState('')
-  const [error,setError]=useState('')
-  const enter=async role=>{
-    setLoading(role);setError('')
-    try{
-      const data=await liveApi('/auth/demo-login',{method:'POST',body:{role}})
-      onLogin(data.token,data.user)
-    }catch(e){setError(e.message)}finally{setLoading('')}
-  }
-  return <div className="live-login"><div className="live-login-shell">
-    <div className="live-login-brand"><Logo/><Badge>Backend conectado</Badge></div>
-    <div className="live-login-copy"><span>FLUXO REAL DE TESTE</span><h1>Professor e aluno.<br/><em>Do convite ao treino concluído.</em></h1><p>Escolha um dos usuários de demonstração. As ações são persistidas no PostgreSQL do Render.</p></div>
-    <LiveNotice type="error">{error}</LiveNotice>
-    <div className="live-login-options">
-      <button disabled={loading} onClick={()=>enter('trainer')}><i><UsersRound size={25}/></i><div><small>USUÁRIO DE TESTE</small><strong>Professor Atlas</strong><span>Fluxo de convite e prescrição</span></div><ChevronRight size={22}/></button>
-      <button disabled={loading} onClick={()=>enter('student')}><i><Dumbbell size={25}/></i><div><small>USUÁRIO DE TESTE</small><strong>Aluno Atlas</strong><span>Fluxo de disponibilidade e execução</span></div><ChevronRight size={22}/></button>
-    </div>
-  </div></div>
-}
-
-function TrainerFlow({token,user,onLogout}){
-  const [students,setStudents]=useState([]),[invites,setInvites]=useState([]),[workouts,setWorkouts]=useState([])
-  const [busy,setBusy]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState('')
-  const load=async()=>{try{const [a,b,c]=await Promise.all([liveApi('/trainer/students',{token}),liveApi('/invitations',{token}),liveApi('/workouts',{token})]);setStudents(a);setInvites(b);setWorkouts(c)}catch(e){setError(e.message)}}
-  useEffect(()=>{load()},[])
-  const student=students[0], pending=invites.find(x=>x.status==='Pending')
-  const invite=async()=>{setBusy('invite');setError('');try{await liveApi('/invitations',{token,method:'POST',body:{studentEmail:'aluno@atlas.test'}});setMessage('Convite enviado. Entre como aluno para aceitar.');await load()}catch(e){setError(e.message)}finally{setBusy('')}}
-  const prescribe=async()=>{setBusy('workout');setError('');try{const days=student.availability.slice(0,2);await liveApi('/workouts',{token,method:'POST',body:{studentId:student.id,name:'Treino A — Peito & Costas',model:'AB',notes:'Amplitude controlada e progressão de carga.',scheduledDays:days,exercises:[{name:'Supino reto com halteres',sets:3,reps:10,suggestedWeight:18,restSeconds:90},{name:'Remada baixa',sets:3,reps:12,suggestedWeight:42,restSeconds:75},{name:'Elevação lateral',sets:3,reps:15,suggestedWeight:7,restSeconds:60}]}});setMessage('Treino prescrito e salvo no banco.');await load()}catch(e){setError(e.message)}finally{setBusy('')}}
-  const progress={invite:Boolean(student||pending),availability:Boolean(student?.availability?.length),workout:workouts.length>0,execution:workouts.some(w=>w.latestSession?.completedAt)}
-  return <div className="live-app"><LiveHeader user={user} onLogout={onLogout}/><main className="live-main"><div className="live-page-head"><div><span className="eyebrow">Professor</span><h1>Fluxo completo de teste</h1><p>Convide o aluno, aguarde a disponibilidade e prescreva o treino.</p></div></div><LiveSteps state={progress}/><LiveNotice type="error">{error}</LiveNotice><LiveNotice type="success">{message}</LiveNotice>
-    <section className="live-panel"><h2>1. Convite</h2>{student?<div className="live-state-card"><strong>{student.name}</strong><Badge>Vinculado</Badge></div>:pending?<div className="live-state-card"><strong>Aluno Atlas</strong><Badge>Aguardando aceite</Badge></div>:<button className="primary-btn" onClick={invite} disabled={busy==='invite'}><Share2 size={17}/> Enviar convite para Aluno Atlas</button>}</section>
-    <section className="live-panel"><h2>2. Disponibilidade do aluno</h2>{student?.availability?.length?<div className="live-days">{LIVE_DAY_SHORT.map((d,i)=><span key={i} className={student.availability.includes(i)?'active':''}>{d}</span>)}</div>:<p className="live-muted">Aguardando o aluno informar os dias disponíveis.</p>}</section>
-    <section className="live-panel"><h2>3. Prescrição</h2>{student?.availability?.length?<button className="primary-btn" onClick={prescribe} disabled={busy==='workout'}><Dumbbell size={17}/> Prescrever treino AB</button>:<p className="live-muted">A prescrição é liberada depois da disponibilidade.</p>}{workouts.map(w=><div className="live-workout-row" key={w.id}><div><strong>{w.name}</strong><small>{w.scheduledDays.map(d=>LIVE_DAYS[d]).join(' · ')}</small></div><Badge>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>)}</section>
-  </main></div>
-}
-
 function AppShell() {
   const [profile,setProfile]=useState('student')
   const [page,setPage]=useState('home')
@@ -558,7 +486,6 @@ function AppShell() {
   </div>
 }
 
-// live backend integration
 export default function App() {
   return <AppShell/>
 }
