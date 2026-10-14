@@ -270,7 +270,7 @@ function Topbar({ profile, user, onLogout }) {
           <Avatar initials={profile === 'student' ? 'AA' : 'PA'} size="sm"/>
           <span><small>{profile === 'student' ? 'Aluno' : 'Treinador'}</small><strong>{user?.name || 'Atlas'}</strong></span>
         </div>
-        <button className="icon-btn logout-btn" onClick={onLogout} title="Sair"><LogOut size={18}/></button>
+        <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
     </div>
   </header>
@@ -907,14 +907,15 @@ function AppShell() {
 
   const openStudent = id => { setSelectedStudentId(id); setPage('studentDetail') }
 
-  const logout = async () => {
-    try { if (token) await apiRequest('/auth/logout',{token,method:'POST'}) } catch {}
+  const logout = () => {
+    const currentToken = token
     storeToken('')
     setToken('')
     setUser(null)
     setBackend({ invitations:[], students:[], workouts:[], availability:[] })
     setSelectedStudentId('')
     setPage('home')
+    if (currentToken) apiRequest('/auth/logout',{token:currentToken,method:'POST'}).catch(()=>{})
   }
 
   if (inviteToken) return <InviteOnboarding inviteToken={inviteToken} onComplete={handleLogin}/>
