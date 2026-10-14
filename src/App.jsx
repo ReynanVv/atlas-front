@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
@@ -6,6 +6,24 @@ import {
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
   UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
+
+
+const API_URL = 'https://controlfinance-app.onrender.com/atlas-api'
+
+async function apiRequest(path, { token, method = 'GET', body } = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const payload = response.status === 204 ? null : await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(payload?.error || 'Não foi possível concluir a ação.')
+  return payload
+}
+
 
 const studentWorkouts = [
   { name: 'Upper A — Peito & Costas', coach: 'Rafael Monteiro', day: 'Hoje', intensity: 'Moderada', duration: '52 min', status: 'Pendente' },
@@ -53,6 +71,21 @@ function StatCard({ icon: Icon, label, value, detail }) {
 
 function Login({ onEnter }) {
   const [mode, setMode] = useState('welcome')
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+
+  const enterAs = async role => {
+    setBusy(role)
+    setError('')
+    try {
+      const data = await apiRequest('/auth/demo-login', { method: 'POST', body: { role } })
+      onEnter(data.token, data.user)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy('')
+    }
+  }
 
   return <div className="auth-screen">
     <div className="auth-decor auth-decor-left"></div>
@@ -71,33 +104,22 @@ function Login({ onEnter }) {
       </section>
 
       {mode === 'welcome' ? <section className="auth-card">
-        <button className="auth-primary" onClick={() => setMode('signup')}>Inscreva-se gratuitamente</button>
-        <div className="auth-divider"><span></span><strong>ou</strong><span></span></div>
-        <button className="auth-outline" onClick={() => setMode('login')}>Entrar</button>
-        <button className="auth-forgot" onClick={() => setMode('login')}>Esqueci a senha</button>
+        <button className="auth-primary" onClick={() => setMode('login')}>Entrar</button>
+        <div className="auth-divider"><span></span><strong>teste o fluxo</strong><span></span></div>
+        {error && <div className="auth-error">{error}</div>}
+        <div className="auth-social-row demo-role-row">
+          <button disabled={!!busy} onClick={() => enterAs('trainer')}><UsersRound size={18}/> {busy === 'trainer' ? 'Entrando...' : 'Professor Atlas'}</button>
+          <button disabled={!!busy} onClick={() => enterAs('student')}><UserRound size={18}/> {busy === 'student' ? 'Entrando...' : 'Aluno Atlas'}</button>
+        </div>
         <small className="auth-brandline">Atlas · treino conectado</small>
       </section> : <section className="auth-card auth-form-card">
         <button className="auth-back" onClick={() => setMode('welcome')}><ArrowLeft size={17}/> Voltar</button>
-        <span className="eyebrow">{mode === 'signup' ? 'Comece agora' : 'Bem-vindo de volta'}</span>
-        <h2>{mode === 'signup' ? 'Crie sua conta' : 'Entre na sua conta'}</h2>
-        <p>{mode === 'signup' ? 'Leva menos de um minuto.' : 'Acesse seus treinos, alunos e evolução.'}</p>
-
-        <label className="field-label">E-mail</label>
-        <div className="input-wrap"><Mail size={18}/><input defaultValue={mode === 'login' ? 'demo@atlas.fit' : ''} placeholder="voce@email.com" /></div>
-        {mode === 'signup' && <>
-          <label className="field-label">Nome</label>
-          <div className="input-wrap"><UserRound size={18}/><input placeholder="Seu nome"/></div>
-        </>}
-        <label className="field-label">Senha</label>
-        <div className="input-wrap"><Lock size={18}/><input type="password" defaultValue={mode === 'login' ? '12345678' : ''} placeholder="••••••••" /></div>
-
-        <button className="auth-primary auth-submit" onClick={onEnter}>{mode === 'signup' ? 'Criar conta' : 'Entrar na demonstração'} <ChevronRight size={18}/></button>
-        <div className="auth-divider"><span></span><strong>ou</strong><span></span></div>
-        <div className="auth-social-row">
-          <button><span className="google-g">G</span> Google</button>
-          <button><Apple size={18} fill="currentColor"/> Apple</button>
-        </div>
-        {mode === 'login' && <button className="auth-forgot">Esqueci a senha</button>}
+        <span className="eyebrow">Ambiente de teste</span>
+        <h2>Escolha o perfil</h2>
+        <p>Entre como professor ou aluno para testar o fluxo completo com dados persistidos.</p>
+        {error && <div className="auth-error">{error}</div>}
+        <button className="auth-primary auth-submit" disabled={!!busy} onClick={() => enterAs('trainer')}><UsersRound size={18}/> {busy === 'trainer' ? 'Entrando...' : 'Entrar como Professor Atlas'}</button>
+        <button className="auth-outline auth-submit" disabled={!!busy} onClick={() => enterAs('student')}><UserRound size={18}/> {busy === 'student' ? 'Entrando...' : 'Entrar como Aluno Atlas'}</button>
       </section>}
     </div>
   </div>
