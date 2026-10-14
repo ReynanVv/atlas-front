@@ -554,7 +554,7 @@ function TrainerDashboard({ setPage, user, backend }) {
   </div>
 }
 
-function Students({ setPage, token, backend, refreshBackend }) {
+function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   const [invite, setInvite] = useState(false)
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
@@ -589,7 +589,7 @@ function Students({ setPage, token, backend, refreshBackend }) {
 
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
 
-    {linkedStudents.length ? <div className="student-card-grid">{linkedStudents.map((st)=><article className="student-card clickable" key={st.id} onClick={()=>setPage('studentDetail')}>
+    {linkedStudents.length ? <div className="student-card-grid">{linkedStudents.map((st)=><article className="student-card clickable" key={st.id} onClick={()=>onOpenStudent(st.id)}>
       <div className="student-card-top"><Avatar initials="AA"/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
       <div className="student-kpis">
         <div><span>Disponibilidade</span><strong>{st.availability?.length || 0} dias</strong></div>
@@ -597,7 +597,7 @@ function Students({ setPage, token, backend, refreshBackend }) {
         <div><span>Status</span><strong>Vinculado</strong></div>
       </div>
       <div className="routine-days mini-routine">{['D','S','T','Q','Q','S','S'].map((d,i)=><span key={i} className={st.availability?.includes(i)?'active':''}>{d}</span>)}</div>
-      <div className="student-actions"><button onClick={(e)=>{e.stopPropagation();setPage('studentDetail')}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
+      <div className="student-actions"><button onClick={(e)=>{e.stopPropagation();onOpenStudent(st.id)}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
     </article>)}</div> : <section className="panel empty-state">
       <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Envie o convite e peça para o aluno aceitar no perfil Aluno Atlas.</p>
     </section>}
