@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
-  Home, LineChart, ListChecks, Lock, LogOut, Mail, Menu, MessageCircle, MoreHorizontal,
+  Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
-  UserRound, UsersRound, Video, X, Zap
+  UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
 
 
@@ -581,7 +581,6 @@ function TrainerDashboard({ setPage }) {
 
 function Students({ setPage, token, backend, refreshBackend }) {
   const [invite, setInvite] = useState(false)
-  const [email,setEmail]=useState('aluno@atlas.test')
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
@@ -592,7 +591,7 @@ function Students({ setPage, token, backend, refreshBackend }) {
   const sendInvite=async()=>{
     setBusy(true);setError('');setMessage('')
     try{
-      const result=await apiRequest('/invitations',{token,method:'POST',body:{studentEmail:email}})
+      const result=await apiRequest('/invitations',{token,method:'POST'})
       setInviteResult(result)
       setMessage('Link de convite gerado com sucesso.')
       await refreshBackend()
@@ -610,7 +609,7 @@ function Students({ setPage, token, backend, refreshBackend }) {
 
     {pendingInvites.length>0 && <section className="panel">
       <div className="panel-head"><div><h3>Convites pendentes</h3><p>Aguardando aceite dos alunos.</p></div><Badge>{pendingInvites.length}</Badge></div>
-      <div className="compact-list">{pendingInvites.map(inv=><div className="compact-row" key={inv.id}><div><strong>{inv.studentEmail}</strong><small>Convite enviado</small></div><Badge tone="light">Pendente</Badge></div>)}</div>
+      <div className="compact-list">{pendingInvites.map(inv=><div className="compact-row" key={inv.id}><div><strong>{inv.studentEmail || 'Link de convite'}</strong><small>{inv.studentEmail ? 'Convite aceito por e-mail após o cadastro' : 'Aguardando alguém abrir e aceitar o link'}</small></div><Badge tone="light">Pendente</Badge></div>)}</div>
     </section>}
 
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
@@ -632,12 +631,11 @@ function Students({ setPage, token, backend, refreshBackend }) {
       <button className="modal-close" onClick={()=>setInvite(false)}><X size={18}/></button>
       <div className="modal-icon"><Share2 size={23}/></div><h2>Convidar novo aluno</h2>
       {!inviteResult ? <>
-        <p>Informe o e-mail do aluno. Ele poderá criar uma conta pelo link ou aceitar o convite se já for cadastrado.</p>
-        <label className="field-label">E-mail do aluno</label>
-        <div className="input-wrap"><Mail size={18}/><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="aluno@email.com"/></div>
-        <button className="primary-btn full" disabled={!email || busy} onClick={sendInvite}>{busy?'Gerando link...':'Gerar link de convite'} <Share2 size={17}/></button>
+        <p>Gere um link e compartilhe com quem você quiser convidar. O aluno cria uma conta ou entra no Atlas depois de abrir o link.</p>
+        <div className="generic-invite-preview"><Share2 size={22}/><div><strong>Convite sem e-mail</strong><span>Qualquer pessoa com o link poderá aceitá-lo uma única vez.</span></div></div>
+        <button className="primary-btn full" disabled={busy} onClick={sendInvite}>{busy?'Gerando link...':'Gerar link de convite'} <Share2 size={17}/></button>
       </> : <>
-        <div className="invite-link-success"><Check size={20}/><div><strong>Convite pronto</strong><span>{inviteResult.accountExists?'O aluno já possui conta no Atlas.':'O aluno criará a conta por este link.'}</span></div></div>
+        <div className="invite-link-success"><Check size={20}/><div><strong>Convite pronto</strong><span>Compartilhe o link com o aluno. Ele poderá criar uma conta ou entrar em uma já existente.</span></div></div>
         <label className="field-label">Link de convite</label>
         <div className="copy-link official-invite-link"><span>{inviteResult.inviteUrl}</span><button onClick={()=>navigator.clipboard?.writeText(inviteResult.inviteUrl)}>Copiar</button></div>
         <div className="invite-link-actions">
@@ -648,7 +646,7 @@ function Students({ setPage, token, backend, refreshBackend }) {
               await navigator.clipboard?.writeText(inviteResult.inviteUrl)
             }
           }}><Share2 size={17}/> Compartilhar convite</button>
-          <button className="secondary-btn full" onClick={()=>{setInviteResult(null);setEmail('')}}>Gerar outro convite</button>
+          <button className="secondary-btn full" onClick={()=>setInviteResult(null)}>Gerar outro convite</button>
         </div>
         <small className="helper-text">O link expira em {inviteResult.expiresInDays || 7} dias.</small>
       </>}
