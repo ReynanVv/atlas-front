@@ -571,16 +571,17 @@ function Students({ setPage, token, backend, refreshBackend }) {
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
+  const [inviteResult,setInviteResult]=useState(null)
   const linkedStudents=backend.students || []
   const pendingInvites=(backend.invitations || []).filter(i=>i.status==='Pending')
 
   const sendInvite=async()=>{
     setBusy(true);setError('');setMessage('')
     try{
-      await apiRequest('/invitations',{token,method:'POST',body:{studentEmail:email}})
-      setMessage('Convite enviado. Entre como Aluno Atlas para aceitar.')
+      const result=await apiRequest('/invitations',{token,method:'POST',body:{studentEmail:email}})
+      setInviteResult(result)
+      setMessage('Link de convite gerado com sucesso.')
       await refreshBackend()
-      setInvite(false)
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
@@ -613,13 +614,30 @@ function Students({ setPage, token, backend, refreshBackend }) {
       <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Envie o convite e peça para o aluno aceitar no perfil Aluno Atlas.</p>
     </section>}
 
-    {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal" onClick={e=>e.stopPropagation()}>
+    {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal invite-modal" onClick={e=>e.stopPropagation()}>
       <button className="modal-close" onClick={()=>setInvite(false)}><X size={18}/></button>
       <div className="modal-icon"><Share2 size={23}/></div><h2>Convidar novo aluno</h2>
-      <p>Informe o e-mail do aluno. Para testar o fluxo use <strong>aluno@atlas.test</strong>.</p>
-      <label className="field-label">E-mail do aluno</label>
-      <div className="input-wrap"><Mail size={18}/><input value={email} onChange={e=>setEmail(e.target.value)} /></div>
-      <button className="primary-btn full" disabled={!email || busy} onClick={sendInvite}>{busy?'Enviando...':'Enviar convite'} <Share2 size={17}/></button>
+      {!inviteResult ? <>
+        <p>Informe o e-mail do aluno. Ele poderá criar uma conta pelo link ou aceitar o convite se já for cadastrado.</p>
+        <label className="field-label">E-mail do aluno</label>
+        <div className="input-wrap"><Mail size={18}/><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="aluno@email.com"/></div>
+        <button className="primary-btn full" disabled={!email || busy} onClick={sendInvite}>{busy?'Gerando link...':'Gerar link de convite'} <Share2 size={17}/></button>
+      </> : <>
+        <div className="invite-link-success"><Check size={20}/><div><strong>Convite pronto</strong><span>{inviteResult.accountExists?'O aluno já possui conta no Atlas.':'O aluno criará a conta por este link.'}</span></div></div>
+        <label className="field-label">Link de convite</label>
+        <div className="copy-link official-invite-link"><span>{inviteResult.inviteUrl}</span><button onClick={()=>navigator.clipboard?.writeText(inviteResult.inviteUrl)}>Copiar</button></div>
+        <div className="invite-link-actions">
+          <button className="primary-btn full" onClick={async()=>{
+            if(navigator.share){
+              try{await navigator.share({title:'Convite Atlas',text:'Você foi convidado para treinar pelo Atlas.',url:inviteResult.inviteUrl})}catch{}
+            }else{
+              await navigator.clipboard?.writeText(inviteResult.inviteUrl)
+            }
+          }}><Share2 size={17}/> Compartilhar convite</button>
+          <button className="secondary-btn full" onClick={()=>{setInviteResult(null);setEmail('')}}>Gerar outro convite</button>
+        </div>
+        <small className="helper-text">O link expira em {inviteResult.expiresInDays || 7} dias.</small>
+      </>}
     </div></div>}
   </div>
 }
