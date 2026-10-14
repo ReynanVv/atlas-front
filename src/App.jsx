@@ -742,8 +742,6 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
   const [studentQuery,setStudentQuery]=useState('')
   const [studentOpen,setStudentOpen]=useState(false)
   const [selectedStudentId,setSelectedStudentId]=useState('')
-  const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
-  const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
   const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
   const [scheduledDays,setScheduledDays]=useState([])
@@ -862,6 +860,7 @@ function AppShell() {
   const [backend,setBackend]=useState({ invitations:[], students:[], workouts:[], availability:[] })
   const [backendError,setBackendError]=useState('')
   const [selectedStudentId,setSelectedStudentId]=useState('')
+  const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
 
   const profile = user?.role === 'trainer' ? 'trainer' : 'student'
 
