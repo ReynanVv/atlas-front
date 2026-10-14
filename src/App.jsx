@@ -561,27 +561,25 @@ function ExerciseLibrary({ setPage }) {
   </div>
 }
 
-function Workouts({ setPage }) {
+function Workouts({ setPage, backend }) {
   const [query,setQuery]=useState('')
-  const [status,setStatus]=useState('Todos')
-  const rows = [
-    {name:'Upper/Lower — A',student:'Marina Costa',routine:'Seg · Qui',model:'AB',status:'Ativo'},
-    {name:'Full Body — A',student:'Lucas Nunes',routine:'Seg · Qua · Sex',model:'FULLBODY',status:'A vencer'},
-    {name:'Hipertrofia — Push',student:'Bianca Melo',routine:'Ter · Sex',model:'ABC',status:'Vencido'},
-    {name:'Recondicionamento 01',student:'Diego Ramos',routine:'Ter · Sáb',model:'AB',status:'Pausado'},
-  ]
-  const filtered = rows.filter(w => {
-    const text = `${w.name} ${w.student} ${w.model}`.toLowerCase()
-    return text.includes(query.toLowerCase()) && (status==='Todos' || w.status===status)
-  })
-  const toneFor = s => s==='Ativo'?'green':s==='A vencer'?'light':'gray'
+  const rows=(backend.workouts || []).map(w=>({
+    id:w.id,
+    name:w.name,
+    student:w.studentName || 'Aluno Atlas',
+    routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
+    model:w.model,
+    status:w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'
+  }))
+  const filtered=rows.filter(w=>`${w.name} ${w.student} ${w.model} ${w.status}`.toLowerCase().includes(query.toLowerCase()))
+  const toneFor=s=>s==='Concluído'?'green':s==='Em execução'?'light':'gray'
 
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Crie modelos reutilizáveis ou personalize uma rotina para cada aluno.</p></div><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></section>
+  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Prescrições salvas no backend para seus alunos.</p></div><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></section>
     <div className="tabs"><button className="active">Treinos prescritos</button><button>Templates</button></div>
-    <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno ou modelo"/></div><label className="status-filter"><span>Status</span><select value={status} onChange={e=>setStatus(e.target.value)}><option>Todos</option><option>Ativo</option><option>A vencer</option><option>Vencido</option><option>Pausado</option></select></label></div>
+    <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno, modelo ou status"/></div></div>
     <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
-    {filtered.map((w,i)=><div className="workout-table-row" key={i}><div><span className="workout-icon"><Dumbbell size={18}/></span><strong>{w.name}</strong></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
-    {!filtered.length && <div className="empty-state">Nenhum treino encontrado com esses filtros.</div>}</div></section>
+    {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><strong>{w.name}</strong></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
+    {!filtered.length && <div className="empty-state">Nenhum treino prescrito ainda. Crie o primeiro treino para um aluno vinculado.</div>}</div></section>
   </div>
 }
 
