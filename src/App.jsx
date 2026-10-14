@@ -165,43 +165,87 @@ function BottomNav({ profile, page, setPage }) {
   )}</nav>
 }
 
-function StudentHome({ setPage }) {
+function StudentHome({ setPage, token, user, backend, refreshBackend }) {
   const [routineOpen, setRoutineOpen] = useState(false)
-  const [routineDays, setRoutineDays] = useState([1, 3, 5])
-  const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']
-  const names = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-  const toggleDay = i => setRoutineDays(v => v.includes(i) ? v.filter(x => x !== i) : [...v, i].sort())
+  const [routineDays, setRoutineDays] = useState(backend.availability || [])
+  const [busy,setBusy]=useState('')
+  const [message,setMessage]=useState('')
+  const [error,setError]=useState('')
+  const labels = ['D','S','T','Q','Q','S','S']
+  const names = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+  const pendingInvite = backend.invitations.find(i => i.status === 'Pending')
+  const acceptedInvite = backend.invitations.find(i => i.status === 'Accepted')
+  const workouts = backend.workouts || []
+  const currentWorkout = workouts.find(w => !w.latestSession?.completedAt) || workouts[0]
+  const completedCount = workouts.filter(w => w.latestSession?.completedAt).length
+
+  useEffect(()=>{ setRoutineDays(backend.availability || []) },[backend.availability])
+
+  const toggleDay = i => setRoutineDays(v => v.includes(i) ? v.filter(x => x !== i) : [...v, i].sort((a,b)=>a-b))
+
+  const acceptInvite = async () => {
+    if (!pendingInvite) return
+    setBusy('invite');setError('');setMessage('')
+    try {
+      await apiRequest(`/invitations/${pendingInvite.id}/accept`,{token,method:'POST'})
+      setMessage('Convite aceito. Agora escolha sua disponibilidade.')
+      await refreshBackend()
+    } catch(e) { setError(e.message) } finally { setBusy('') }
+  }
+
+  const saveAvailability = async () => {
+    setBusy('availability');setError('');setMessage('')
+    try {
+      await apiRequest('/availability',{token,method:'PUT',body:{days:routineDays}})
+      setMessage('Disponibilidade salva. Seu professor já pode usar esses dias na prescrição.')
+      await refreshBackend()
+      setRoutineOpen(false)
+    } catch(e) { setError(e.message) } finally { setBusy('') }
+  }
 
   return <div className="page-stack">
     <section className="welcome-row">
-      <div><span className="eyebrow">Terça-feira, 6 de outubro</span><h1>Boa noite, Amanda 👋</h1><p>Seu treino está pronto. Hoje é dia de construir consistência.</p></div>
-      <div className="streak-card"><Flame size={21}/><span><strong>7 dias</strong><small>sequência atual</small></span></div>
+      <div><span className="eyebrow">Seu espaço de treino</span><h1>Boa noite, {user?.name || 'Aluno'} 👋</h1><p>{currentWorkout ? 'Seu treino está pronto. Hoje é dia de construir consistência.' : 'Organize sua rotina e aguarde a prescrição do seu professor.'}</p></div>
+      <div className="streak-card"><Flame size={21}/><span><strong>{completedCount} treino{completedCount===1?'':'s'}</strong><small>concluídos</small></span></div>
     </section>
 
-    <section className="today-card">
+    {error && <div className="app-error-banner">{error}</div>}
+    {message && <div className="app-success-banner">{message}</div>}
+
+    {pendingInvite && <section className="panel invite-official-card">
+      <div className="panel-head"><div><h3>Convite de treinador</h3><p><strong>{pendingInvite.trainerName}</strong> quer vincular você como aluno.</p></div><Badge>Novo convite</Badge></div>
+      <button className="primary-btn" disabled={busy==='invite'} onClick={acceptInvite}><Check size={17}/> {busy==='invite'?'Aceitando...':'Aceitar convite'}</button>
+    </section>}
+
+    {currentWorkout ? <section className="today-card">
       <div className="today-main">
-        <div className="today-meta"><Badge>Treino de hoje</Badge><span><Clock3 size={15}/> 52 min</span><span><Zap size={15}/> Moderada</span></div>
-        <h2>Upper A — Peito & Costas</h2>
-        <p>Foco em progressão de carga, amplitude controlada e 1–2 repetições em reserva.</p>
-        <div className="coach-line"><Avatar initials="RM" size="sm"/><span>Prescrito por <strong>Rafael Monteiro</strong></span></div>
-        <button className="primary-btn" onClick={() => setPage('workout')}><Play size={18} fill="currentColor"/> Iniciar treino</button>
+        <div className="today-meta"><Badge>{currentWorkout.latestSession?.completedAt ? 'Concluído' : currentWorkout.latestSession ? 'Em andamento' : 'Treino disponível'}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span></div>
+        <h2>{currentWorkout.name}</h2>
+        <p>{currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
+        <div className="coach-line"><Avatar initials="PA" size="sm"/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Professor Atlas'}</strong></span></div>
+        {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => setPage('workout')}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
         <div className="workout-figure"><Dumbbell size={54}/></div>
         <div className="exercise-preview">
-          <small>5 exercícios</small><strong>18 séries totais</strong><span>Próximo: Supino reto</span>
+          <small>{currentWorkout.exercises?.length || 0} exercícios</small>
+          <strong>{(currentWorkout.exercises || []).reduce((sum,e)=>sum+Number(e.sets||0),0)} séries totais</strong>
+          <span>{(currentWorkout.scheduledDays || []).map(d=>names[d]).join(' · ')}</span>
         </div>
       </div>
-    </section>
+    </section> : <section className="today-card empty-today-card">
+      <div className="today-main"><div className="today-meta"><Badge tone="light">Aguardando prescrição</Badge></div><h2>Nenhum treino recebido ainda</h2><p>{acceptedInvite ? 'Seu professor já está vinculado. Salve sua disponibilidade para que ele possa montar seu treino.' : 'Aceite o convite do seu professor para iniciar o fluxo.'}</p></div>
+      <div className="today-visual"><div className="workout-figure"><Dumbbell size={54}/></div></div>
+    </section>}
 
-    <div className="section-title"><div><h2>Próximos treinos</h2><p>O que vem pela frente.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
+    <div className="section-title"><div><h2>Meus treinos</h2><p>Prescrições recebidas do seu professor.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
     <section className="panel no-pad upcoming-main">
       <div className="compact-list">
-        {studentWorkouts.slice(1).map((w,i) => <button className="compact-row upcoming-row" key={i}>
-          <div className="date-box"><strong>{i === 0 ? '08' : '10'}</strong><small>OUT</small></div>
-          <div><strong>{w.name}</strong><small>{w.duration} · {w.intensity}</small></div>
-          <Badge tone="light">{w.status}</Badge><ChevronRight size={18}/>
-        </button>)}
+        {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row" key={w.id} onClick={()=>!w.latestSession?.completedAt&&setPage('workout')}>
+          <div className="date-box"><strong>{String(i+1).padStart(2,'0')}</strong><small>{w.model}</small></div>
+          <div><strong>{w.name}</strong><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ') || 'Sem dias definidos'}</small></div>
+          <Badge tone={w.latestSession?.completedAt?'green':'light'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em andamento':'Pendente'}</Badge><ChevronRight size={18}/>
+        </button>) : <div className="empty-state">Nenhum treino prescrito ainda.</div>}
       </div>
     </section>
 
@@ -212,13 +256,13 @@ function StudentHome({ setPage }) {
           {labels.map((d,i) => <span key={i} className={routineDays.includes(i) ? 'active' : ''}>{d}</span>)}
         </div>
         <div className="routine-copy"><strong>{routineDays.length} dias por semana</strong><span>{routineDays.map(i => names[i]).join(' · ') || 'Nenhum dia selecionado'}</span></div>
-        <button className="secondary-btn compact" onClick={() => setRoutineOpen(true)}>Editar disponibilidade</button>
+        <button className="secondary-btn compact" disabled={!acceptedInvite && !pendingInvite} onClick={() => setRoutineOpen(true)}>Editar disponibilidade</button>
       </section>
       <section className="panel">
-        <div className="panel-head"><div><h3>Resumo do mês</h3><p>Consistência em outubro.</p></div><Trophy size={20}/></div>
+        <div className="panel-head"><div><h3>Resumo</h3><p>Dados do seu fluxo atual.</p></div><Trophy size={20}/></div>
         <div className="month-summary">
-          <div className="progress-ring"><span>86<small>%</small></span></div>
-          <div><strong>6 de 7 treinos</strong><span>Você está acima da sua média de setembro.</span><button onClick={() => setPage('progress')}>Ver evolução</button></div>
+          <div className="progress-ring"><span>{workouts.length ? Math.round(completedCount/workouts.length*100) : 0}<small>%</small></span></div>
+          <div><strong>{completedCount} de {workouts.length} treinos</strong><span>{completedCount ? 'Treinos concluídos ficam registrados no histórico.' : 'Conclua seu primeiro treino para iniciar seu histórico.'}</span></div>
         </div>
       </section>
     </div>
@@ -226,9 +270,9 @@ function StudentHome({ setPage }) {
     {routineOpen && <div className="modal-backdrop" onClick={() => setRoutineOpen(false)}><div className="standard-modal" onClick={e => e.stopPropagation()}>
       <button className="modal-close" onClick={() => setRoutineOpen(false)}><X size={18}/></button>
       <div className="modal-icon"><CalendarDays size={23}/></div><h2>Escolha sua rotina</h2>
-      <p>Selecione os dias em que você consegue treinar. Seu treinador usará essa disponibilidade para definir quais treinos serão executados em cada dia.</p>
+      <p>Selecione os dias em que você consegue treinar. Seu treinador verá exatamente essa disponibilidade.</p>
       <div className="weekday-picker routine-picker">{labels.map((d,i)=><button key={i} className={routineDays.includes(i)?'active':''} onClick={()=>toggleDay(i)}>{d}</button>)}</div>
-      <button className="primary-btn full" onClick={() => setRoutineOpen(false)}>Salvar disponibilidade <Check size={17}/></button>
+      <button className="primary-btn full" disabled={!routineDays.length || busy==='availability'} onClick={saveAvailability}>{busy==='availability'?'Salvando...':'Salvar disponibilidade'} <Check size={17}/></button>
     </div></div>}
   </div>
 }
