@@ -804,3 +804,34 @@ button{color:inherit}
   margin:0;
   color:#AEB8C4;
 }
+
+
+/* Explicit logout action */
+.logout-action{
+  min-height:42px;
+  border:1px solid #283B54;
+  border-radius:12px;
+  background:#13243A;
+  color:#fff;
+  padding:0 13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-weight:800;
+  font-size:12px;
+}
+.logout-action:hover{background:#1A2F4A}
+@media(max-width:680px){
+  .logout-action{
+    min-height:38px;
+    padding:0 11px;
+    font-size:11px;
+    border-radius:10px;
+  }
+  .profile-switch{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+}
