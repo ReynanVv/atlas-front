@@ -687,3 +687,25 @@ button{color:inherit}
   .invite-day-grid{gap:5px}
   .invite-day-grid button{min-height:64px}
 }
+
+
+/* Generic invitation flow */
+.invite-choice-grid{display:grid;gap:10px;margin-top:24px}
+.invite-choice-card{
+  width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;
+  border:1px solid #405067;background:#0F1D2E;color:#fff;border-radius:15px;padding:17px;text-align:left
+}
+.invite-choice-card:hover{border-color:#B8E400}
+.invite-choice-card>svg:first-child{color:#B8E400}
+.invite-choice-card div{display:flex;flex-direction:column;gap:3px}
+.invite-choice-card strong{font-size:14px}
+.invite-choice-card span{font-size:10px;color:#AEB8C4}
+.invite-back{margin-bottom:20px}
+.generic-invite-preview{
+  display:flex;align-items:center;gap:12px;background:#E9ECF2;border-radius:14px;padding:15px;
+  margin:16px 0;text-align:left
+}
+.generic-invite-preview svg{color:#0B1B3A;flex:0 0 auto}
+.generic-invite-preview div{display:flex;flex-direction:column;gap:3px}
+.generic-invite-preview strong{color:#0B1B3A}
+.generic-invite-preview span{font-size:10px;line-height:1.4;color:#69737A}
