@@ -484,53 +484,42 @@ function WorkoutExecution({ setPage, token, workout, refreshBackend }) {
   </div>
 }
 
-function StudentHistory() {
-  const history = [
-    ['04 OUT','Lower A — Quadríceps','Rafael Monteiro','58 min','Realizado'],
-    ['02 OUT','Upper B — Ombros & Braços','Camila Alves','49 min','Realizado'],
-    ['30 SET','Upper A — Peito & Costas','Rafael Monteiro','54 min','Realizado'],
-    ['28 SET','Lower B — Posteriores','Rafael Monteiro','—','Não realizado'],
-  ]
-  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Histórico</span><h1>Seus treinos</h1><p>Acompanhe constância, duração e execução das últimas sessões.</p></section>
-    <div className="filter-row"><button className="filter active">Todos</button><button className="filter">Realizados</button><button className="filter">Pendentes</button><button className="filter">Não realizados</button></div>
-    <section className="panel no-pad"><div className="history-list">{history.map((h,i) => <div className="history-row" key={i}>
-      <div className="history-date">{h[0]}</div><div className="history-main"><strong>{h[1]}</strong><small><Avatar initials={h[2].startsWith('R')?'RM':'CA'} size="xs"/>{h[2]}</small></div>
-      <span className="desktop-only">{h[3]}</span><Badge tone={h[4] === 'Realizado' ? 'green' : 'gray'}>{h[4]}</Badge><ChevronRight size={18}/>
-    </div>)}</div></section>
-  </div>
-}
-
-function StudentProgress() {
-  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Evolução</span><h1>Seu progresso em números</h1><p>Volume, carga e consistência para você entender o que está mudando.</p></section>
-    <div className="stats-grid"><StatCard icon={Dumbbell} label="Volume no mês" value="18.420 kg" detail="+11% vs. setembro"/><StatCard icon={Flame} label="Treinos concluídos" value="14" detail="88% de aderência"/><StatCard icon={Trophy} label="Recordes pessoais" value="5" detail="nos últimos 30 dias"/></div>
-    <div className="grid-2 progress-grid">
-      <section className="panel"><div className="panel-head"><div><h3>Carga máxima — Supino</h3><p>Últimas 8 semanas</p></div><Badge>+14%</Badge></div>
-        <div className="line-chart"><svg viewBox="0 0 500 190" preserveAspectRatio="none"><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6c9e72" stopOpacity=".28"/><stop offset="100%" stopColor="#6c9e72" stopOpacity="0"/></linearGradient></defs><path d="M0,165 C55,160 70,145 115,148 S170,120 220,126 S280,93 330,104 S400,65 500,48 L500,190 L0,190 Z" fill="url(#fill)"/><path d="M0,165 C55,160 70,145 115,148 S170,120 220,126 S280,93 330,104 S400,65 500,48" fill="none" stroke="#497b50" strokeWidth="4" strokeLinecap="round"/></svg><div className="chart-labels"><span>12 ago.</span><span>9 set.</span><span>6 out.</span></div></div>
-      </section>
-      <section className="panel"><div className="panel-head"><div><h3>Volume por grupo</h3><p>Distribuição neste mês</p></div><MoreHorizontal size={20}/></div>
-        <div className="bar-chart">{[['Peito',84],['Costas',92],['Pernas',76],['Ombros',61],['Braços',54]].map(([n,v]) => <div className="bar-item" key={n}><div><span>{n}</span><strong>{v}%</strong></div><div className="bar"><i style={{width:`${v}%`}}></i></div></div>)}</div>
-      </section>
-    </div>
-  </div>
-}
-
-function Messages({ trainer = false }) {
-  return <div className="page-stack chat-page"><section className="page-heading"><span className="eyebrow">Mensagens</span><h1>{trainer ? 'Converse com seus alunos' : 'Fale com seu treinador'}</h1><p>Feedback rápido e contexto de treino no mesmo lugar.</p></section>
-    <section className="chat-shell">
-      <aside className="chat-list">
-        <div className="chat-search"><Search size={17}/><input placeholder="Buscar conversa"/></div>
-        {(trainer ? students.slice(0,3).map(s=>[s.initials,s.name]) : [['RM','Rafael Monteiro'],['CA','Camila Alves']]).map((c,i)=><button key={i} className={i===0?'active':''}><Avatar initials={c[0]} size="sm"/><span><strong>{c[1]}</strong><small>{i===0?'Perfeito, pode manter assim...':'Treino atualizado para sexta.'}</small></span><i>{i===0?'2':''}</i></button>)}
-      </aside>
-      <div className="conversation">
-        <div className="conversation-head"><Avatar initials={trainer?'MC':'RM'} size="sm"/><div><strong>{trainer?'Marina Costa':'Rafael Monteiro'}</strong><small><span className="online-dot"></span> Online agora</small></div></div>
-        <div className="messages">
-          <div className="message received">Como foi o supino hoje? A carga de 18 kg ficou confortável?<small>18:22</small></div>
-          <div className="message sent">Fiz as 4 séries. As duas últimas ficaram pesadas, mas consegui manter 10 reps.<small>18:24</small></div>
-          <div className="message received">Perfeito. Pode manter assim no próximo treino. Se fechar 10 reps com mais folga, subimos 2 kg. 👊<small>18:25</small></div>
-        </div>
-        <div className="message-input"><button><CirclePlus size={20}/></button><input placeholder="Escreva uma mensagem..."/><button className="send-btn"><Send size={18}/></button></div>
+function StudentHistory({ backend }) {
+  const workouts=backend.workouts || []
+  const history=workouts.filter(w=>w.latestSession)
+  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Histórico</span><h1>Seus treinos</h1><p>Somente sessões registradas no backend.</p></section>
+    <section className="panel no-pad"><div className="history-list">{history.length?history.map(w=>{
+      const date=w.latestSession?.completedAt || w.latestSession?.startedAt || w.createdAt
+      const label=date?new Date(date).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase():'—'
+      const status=w.latestSession?.completedAt?'Realizado':'Em andamento'
+      return <div className="history-row" key={w.id}>
+        <div className="history-date">{label}</div>
+        <div className="history-main"><strong>{w.name}</strong><small><Avatar initials={(w.trainerName||'T').slice(0,2).toUpperCase()} size="xs"/>{w.trainerName || 'Treinador'}</small></div>
+        <Badge tone={status==='Realizado'?'green':'light'}>{status}</Badge><ChevronRight size={18}/>
       </div>
-    </section>
+    }):<div className="empty-state">Nenhuma sessão registrada ainda.</div>}</div></section>
+  </div>
+}
+
+function StudentProgress({ backend }) {
+  const workouts=backend.workouts || []
+  const completed=workouts.filter(w=>w.latestSession?.completedAt).length
+  const started=workouts.filter(w=>w.latestSession).length
+  const completionRate=workouts.length?Math.round(completed/workouts.length*100):0
+  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Evolução</span><h1>Seu progresso em números</h1><p>Os indicadores abaixo usam somente dados já registrados no backend.</p></section>
+    <div className="stats-grid">
+      <StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="total recebido"/>
+      <StatCard icon={Flame} label="Treinos iniciados" value={started} detail="sessões abertas ou concluídas"/>
+      <StatCard icon={Trophy} label="Treinos concluídos" value={completed} detail={`${completionRate}% das prescrições`}/>
+    </div>
+    <section className="panel empty-state"><LineChart size={32}/><h3>Evolução de carga e volume</h3><p>Esses gráficos aparecerão quando houver um endpoint real de agregação das séries registradas. Nenhum valor de exemplo é exibido.</p></section>
+  </div>
+}
+
+function Messages({ trainer = false, backend }) {
+  const participants=trainer ? (backend.students || []) : []
+  return <div className="page-stack chat-page"><section className="page-heading"><span className="eyebrow">Mensagens</span><h1>{trainer ? 'Converse com seus alunos' : 'Fale com seu treinador'}</h1><p>As conversas aparecerão quando o backend de mensagens estiver implementado.</p></section>
+    <section className="panel empty-state"><MessageCircle size={34}/><h3>Nenhuma conversa registrada</h3><p>{trainer && participants.length ? `Você tem ${participants.length} aluno(s) vinculado(s), mas ainda não existe endpoint de mensagens.` : 'O Atlas ainda não possui mensagens persistidas no backend.'}</p></section>
   </div>
 }
 
