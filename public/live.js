@@ -1,7 +1,7 @@
 const API='https://controlfinance-app.onrender.com/atlas-api';
 const app=document.getElementById('app');
 const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],short=['D','S','T','Q','Q','S','S'];
-let demo=null,token='',user=null,invites=[],students=[],availability=[],workouts=[],session=null,msg='',err='';
+let token='',user=null,invites=[],students=[],availability=[],workouts=[],session=null,msg='',err='';
 
 async function req(path,opt={}){
  const controller=new AbortController();
@@ -23,28 +23,20 @@ function steps(x){return '<div class="steps">'+[['Convite',x.invite],['Disponibi
 function top(){return '<div class="top"><div class="brand"><i>⌁</i>Atlas</div><button class="logout" id="logout">Sair</button></div>'}
 function panel(title,sub,body,tag=''){return '<section class="panel"><div class="panel-title"><div><h2>'+title+'</h2><p class="muted">'+sub+'</p></div>'+(tag?badge(tag):'')+'</div>'+body+'</section>'}
 
-async function boot(){
- app.innerHTML='<div class="login"><div class="login-box"><span class="pill">ATLAS</span><h1>Conectando ao backend...</h1><p>O serviço gratuito do Render pode levar alguns segundos para iniciar.</p><div class="notice ok">Carregando usuários e banco de dados...</div></div></div>';
- try{
-  demo=await req('/demo');
-  renderLogin();
- }catch(e){
-  app.innerHTML='<div class="login"><div class="login-box"><span class="pill">ERRO DE CONEXÃO</span><h1>Não foi possível carregar o Atlas.</h1><div class="notice err">'+esc(e.message)+'</div><button class="primary" id="retry">Tentar novamente</button></div></div>';
-  const retry=document.getElementById('retry');
-  if(retry)retry.onclick=boot;
- }
-}
+function boot(){renderLogin()}
 function renderLogin(){
  app.innerHTML='<div class="login"><div class="login-box"><span class="pill">BACKEND CONECTADO</span><h1>Professor e aluno.<br><em>Do convite ao treino concluído.</em></h1><p>Escolha um perfil. Este ambiente usa o PostgreSQL do Render e permite repetir o fluxo completo.</p>'+notice()+'<div class="roles"><button class="role" data-role="trainer"><strong>Professor Atlas</strong><span>Convite e prescrição</span></button><button class="role" data-role="student"><strong>Aluno Atlas</strong><span>Disponibilidade e execução</span></button></div></div></div>';
  document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>login(b.dataset.role));
 }
-async function login(role){err='';msg='';try{const u=demo.users.find(x=>x.role===role);const d=await req('/auth/login',{method:'POST',body:{email:u.email,password:demo.password}});token=d.token;user=d.user;await load()}catch(e){err=e.message;renderLogin()}}
-async function load(){
- err='';session=null;
+async function login(role){
+ err='';msg='';
+ app.innerHTML='<div class="login"><div class="login-box"><span class="pill">ATLAS</span><h1>Entrando como '+(role==='trainer'?'Professor':'Aluno')+'...</h1><p>Conectando ao backend e restaurando o estado do fluxo.</p><div class="notice ok">Aguarde alguns segundos.</div></div></div>';
  try{
-  if(user.role==='trainer'){[students,invites,workouts]=await Promise.all([req('/trainer/students'),req('/invitations'),req('/workouts')]);renderTrainer()}
-  else{const a=await Promise.all([req('/invitations'),req('/availability').catch(()=>({days:[]})),req('/workouts')]);invites=a[0];availability=a[1].days||[];workouts=a[2];renderStudent()}
- }catch(e){err=e.message; user.role==='trainer'?renderTrainer():renderStudent()}
+  const d=await req('/auth/demo-login',{method:'POST',body:{role}});
+  token=d.token;user=d.user;await load();
+ }catch(e){
+  err=e.message;renderLogin();
+ }
 }
 function wireBase(){const l=document.getElementById('logout');if(l)l.onclick=()=>{token='';user=null;msg='';err='';renderLogin()}}
 
