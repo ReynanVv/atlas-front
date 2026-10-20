@@ -1267,6 +1267,13 @@ function AppShell() {
   const handleLogin=(nextToken,nextUser)=>{
     storeToken(nextToken);setToken(nextToken);setUser(nextUser);setBackend(emptyBackend)
     setPage(nextUser.role==='trainer'?'dashboard':'home')
+    apiRequest('/me',{token:nextToken}).then(data=>{
+      if(data?.user){
+        setUser(data.user)
+        setPage(data.user.role==='trainer'?'dashboard':'home')
+        refreshBackend(nextToken,data.user)
+      }
+    }).catch(()=>{})
   }
 
   const handleUserChange=nextUser=>{
