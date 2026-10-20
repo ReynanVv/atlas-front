@@ -999,3 +999,111 @@ button{color:inherit}
   .set-table-notes .set-row{min-width:620px}
   .progress-bar-row{grid-template-columns:52px minmax(0,1fr) 55px}
 }
+
+
+/* Advanced Atlas requirement-complete UI */
+.avatar{overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+.today-exercise-list{display:grid;gap:7px;margin:14px 0}
+.today-exercise-list>div{
+  display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:center;
+  padding:8px 10px;border:1px solid #E5E9EE;border-radius:10px;background:#F8F9FB
+}
+.today-exercise-list>div>span{
+  width:24px;height:24px;border-radius:8px;background:#B8E400;color:#0B1B3A;
+  display:grid;place-items:center;font-size:9px;font-weight:900
+}
+.today-exercise-list strong{font-size:11px}
+.today-exercise-list small{display:block;margin-top:2px;color:#69737A;font-size:9px}
+
+.attention-list>button{
+  width:100%;border:0;border-top:1px solid #EEF0F3;background:transparent;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
+  padding:11px 0;text-align:left;color:inherit
+}
+.attention-list>button>div{display:flex;flex-direction:column;min-width:0}
+.attention-list>button strong,.attention-list>button small{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+
+.dashboard-student-row{
+  width:100%;border:0;background:#fff;text-align:left;color:inherit
+}
+.dashboard-student-row:hover{background:#F8F9FB}
+.progress-student-table .student-table-head,
+.progress-student-table .student-table-row{
+  grid-template-columns:1.4fr .7fr 1fr .8fr 1fr 20px
+}
+
+.workout-rich-row .workout-trainer-line{display:flex;align-items:center;gap:5px}
+.workout-rich-row .avatar-xs{width:22px;height:22px}
+.workout-list-main{min-width:0}
+.workout-list-main strong,.workout-list-main small{overflow:hidden;text-overflow:ellipsis}
+
+.exercise-filter-panel input,
+.exercise-filter-panel select,
+.exercise-create-modal>input,
+.exercise-create-modal textarea,
+.exercise-create-modal select{
+  border:1px solid #D8DDE4;border-radius:11px;padding:10px 12px;background:#fff;color:#0B1B3A
+}
+.exercise-filter-grid{display:grid;grid-template-columns:1.3fr repeat(3,.8fr) auto;gap:8px;align-items:center}
+.exercise-library-card{min-width:0}
+.exercise-description{font-size:11px;color:#69737A;line-height:1.5}
+.exercise-card-actions{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+.muscle-tags{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}
+.muscle-tags span{padding:5px 8px;border-radius:999px;background:#F0F2F5;font-size:9px;font-weight:800;color:#52606D}
+.video-upload-field{
+  margin:12px 0;min-height:48px;border:1px dashed #B6BEC8;border-radius:12px;padding:10px 12px;
+  display:flex;align-items:center;gap:8px;color:#52606D;position:relative;overflow:hidden
+}
+.video-upload-field input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.video-modal{width:min(720px,calc(100vw - 28px));background:#fff;border-radius:18px;padding:18px;position:relative}
+.video-modal video{display:block;width:100%;max-height:70vh;border-radius:12px;background:#000;margin-top:12px}
+
+.heading-actions{display:flex;gap:8px;flex-wrap:wrap}
+.template-meta,.template-actions{display:flex;gap:12px;align-items:center;margin-top:12px}
+.template-meta span{display:flex;align-items:center;gap:5px;color:#69737A;font-size:10px}
+.builder-add-actions{display:flex;gap:7px;flex-wrap:wrap}
+.compact-form-grid{margin-top:8px}
+.summary-actions{display:grid!important;gap:8px}
+.library-picker-list{display:grid;gap:6px;max-height:360px;overflow:auto;margin-top:12px}
+.library-picker-list>button{
+  border:1px solid #E5E9EE;border-radius:11px;background:#fff;padding:10px 12px;
+  display:flex;align-items:center;justify-content:space-between;text-align:left
+}
+.library-picker-list>button>div{display:flex;flex-direction:column;gap:2px}
+
+.exercise-prescription-note{
+  padding:10px 12px;border-radius:10px;background:#F4F6F8;margin-bottom:10px
+}
+.exercise-prescription-note strong{font-size:10px}
+.exercise-prescription-note p{margin-top:3px;font-size:10px;color:#52606D}
+.exercise-detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.workout-final-notes textarea{width:100%;min-height:90px;margin-top:7px}
+.timer-circle.done{background:#B8E400;color:#0B1B3A}
+
+.profile-register-choice{margin-top:8px}
+.bottom-nav-trainer{grid-template-columns:repeat(5,1fr)!important}
+.bottom-nav-student{grid-template-columns:repeat(4,1fr)!important}
+
+@media(max-width:900px){
+  .progress-student-table .student-table-head,
+  .progress-student-table .student-table-row{
+    grid-template-columns:1.5fr .7fr 1fr .8fr
+  }
+  .progress-student-table .student-table-head span:nth-child(5),
+  .progress-student-table .student-table-head span:nth-child(6),
+  .progress-student-table .student-table-row>span:nth-child(5),
+  .progress-student-table .student-table-row>svg{display:none}
+}
+@media(max-width:680px){
+  .today-exercise-list{margin-top:12px}
+  .today-exercise-list>div{padding:8px}
+  .bottom-nav-trainer button{font-size:8px}
+  .exercise-library-grid,.template-grid{grid-template-columns:1fr}
+  .progress-student-table{overflow:auto}
+  .progress-student-table .student-table-head,
+  .progress-student-table .student-table-row{min-width:560px}
+}
