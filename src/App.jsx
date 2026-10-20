@@ -870,146 +870,181 @@ function ExerciseLibrary({ setPage, token }) {
   </div>
 }
 
-function Workouts({ setPage, backend }) {
+function Workouts({ setPage, backend, token, refreshBackend, onOpenBuilder }) {
   const [query,setQuery]=useState('')
+  const [tab,setTab]=useState('workouts')
+  const [busy,setBusy]=useState('')
   const rows=(backend.workouts || []).map(w=>({
-    id:w.id,
-    name:w.name,
-    student:w.studentName || 'Aluno não identificado',
+    id:w.id,name:w.name,student:w.studentName || 'Aluno não identificado',
     routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
-    model:w.model,
-    status:w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'
+    model:w.model,intensity:w.intensity,estimatedMinutes:w.estimatedMinutes,status:w.status || 'Pendente'
   }))
   const filtered=rows.filter(w=>`${w.name} ${w.student} ${w.model} ${w.status}`.toLowerCase().includes(query.toLowerCase()))
-  const toneFor=s=>s==='Concluído'?'green':s==='Em execução'?'light':'gray'
+  const templates=backend.templates || []
+  const toneFor=s=>s==='Realizado'?'green':s==='Não Realizado'?'gray':'light'
 
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Prescrições salvas no backend para seus alunos.</p></div><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></section>
-    <div className="tabs"><button className="active">Treinos prescritos</button><button>Templates</button></div>
-    <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno, modelo ou status"/></div></div>
-    <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
-    {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><strong>{w.name}</strong></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
-    {!filtered.length && <div className="empty-state">Nenhum treino prescrito ainda. Crie o primeiro treino para um aluno vinculado.</div>}</div></section>
+  const removeTemplate=async(id)=>{
+    setBusy(id)
+    try{await apiRequest(`/templates/${id}`,{token,method:'DELETE'});await refreshBackend()}
+    finally{setBusy('')}
+  }
+
+  return <div className="page-stack">
+    <section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Prescrições e modelos salvos no backend.</p></div><button className="primary-btn" onClick={()=>onOpenBuilder('')}><Plus size={18}/> Criar treino</button></section>
+    <div className="tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos prescritos</button><button className={tab==='templates'?'active':''} onClick={()=>setTab('templates')}>Templates <span>{templates.length}</span></button></div>
+
+    {tab==='workouts'?<>
+      <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno, modelo ou status"/></div></div>
+      <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
+      {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><span><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes||0} min</small></span></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
+      {!filtered.length&&<div className="empty-state">Nenhum treino prescrito ainda.</div>}</div></section>
+    </>:<section className="template-grid">{templates.length?templates.map(t=><article className="panel template-card" key={t.id}><div className="panel-head"><div><Badge tone="light">{t.intensity}</Badge><h3>{t.name}</h3><p>{t.description || 'Sem descrição.'}</p></div><button className="remove-btn" disabled={busy===t.id} onClick={()=>removeTemplate(t.id)}><X size={16}/></button></div><div className="template-meta"><span><Clock3 size={15}/>{t.estimatedMinutes||0} min</span><span><Dumbbell size={15}/>{t.exercises?.length||0} exercícios</span></div><div className="template-actions"><button className="secondary-btn compact" onClick={()=>onOpenBuilder(t.id)}>Usar como base</button></div></article>):<div className="panel empty-state"><ListChecks size={32}/><h3>Nenhum template criado</h3><p>Abra o criador de treino, monte os exercícios e salve como template.</p><button className="primary-btn" onClick={()=>onOpenBuilder('')}>Criar template</button></div>}</section>}
   </div>
 }
 
-function WorkoutBuilder({ setPage, token, backend, refreshBackend }) {
+function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTemplateId = '' }) {
   const linkedStudents=backend.students || []
-  const [syncingStudents,setSyncingStudents]=useState(true)
-  useEffect(()=>{
-    let active=true
-    Promise.resolve(refreshBackend()).finally(()=>{ if(active)setSyncingStudents(false) })
-    return()=>{active=false}
-  },[])
+  const templates=backend.templates || []
+  const library=backend.exercises || []
+  const [syncing,setSyncing]=useState(true)
   const [items,setItems]=useState([])
   const [studentQuery,setStudentQuery]=useState('')
   const [studentOpen,setStudentOpen]=useState(false)
   const [selectedStudentId,setSelectedStudentId]=useState('')
+  const [templateId,setTemplateId]=useState(initialTemplateId)
   const [workoutName,setWorkoutName]=useState('')
   const [model,setModel]=useState('AB')
+  const [description,setDescription]=useState('')
+  const [intensity,setIntensity]=useState('Moderada')
+  const [estimatedMinutes,setEstimatedMinutes]=useState('45')
   const [scheduledDays,setScheduledDays]=useState([])
   const [notes,setNotes]=useState('')
-  const [busy,setBusy]=useState(false)
+  const [libraryOpen,setLibraryOpen]=useState(false)
+  const [libraryQuery,setLibraryQuery]=useState('')
+  const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
+  const [message,setMessage]=useState('')
 
-  const makeExercise=()=>({
-    id:(globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
-    name:'', group:'', sets:'3', reps:'10', weight:'0', rest:'60'
+  useEffect(()=>{
+    let active=true
+    Promise.resolve(refreshBackend()).finally(()=>{if(active)setSyncing(false)})
+    return()=>{active=false}
+  },[])
+
+  const normalizeItem=(ex)=>({
+    id:globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+    exerciseId:ex.exerciseId || ex.id || null,
+    name:ex.name || '',sets:String(ex.sets ?? 3),reps:String(ex.reps ?? 10),
+    weight:String(ex.suggestedWeight ?? ex.weight ?? 0),rest:String(ex.restSeconds ?? ex.rest ?? 60),
+    notes:ex.notes || '',videoUrl:ex.videoUrl || ''
   })
+  const makeExercise=()=>normalizeItem({name:'',sets:3,reps:10,suggestedWeight:0,restSeconds:60})
   const addExercise=()=>setItems(v=>[...v,makeExercise()])
+  const addLibraryExercise=ex=>{setItems(v=>[...v,normalizeItem(ex)]);setLibraryOpen(false);setLibraryQuery('')}
   const remove=id=>setItems(v=>v.filter(e=>e.id!==id))
   const updateItem=(id,key,value)=>setItems(v=>v.map(ex=>ex.id===id?{...ex,[key]:value}:ex))
 
   const sortedStudents=useMemo(()=>[...linkedStudents].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),[linkedStudents])
-  const matches=sortedStudents.filter(st=>{
-    const q=studentQuery.trim().toLowerCase()
-    return !q || st.name.toLowerCase().includes(q) || st.email.toLowerCase().includes(q)
-  })
-  const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId) || null
+  const matches=sortedStudents.filter(st=>{const q=studentQuery.trim().toLowerCase();return !q||st.name.toLowerCase().includes(q)||st.email.toLowerCase().includes(q)})
+  const selectedStudent=linkedStudents.find(st=>st.id===selectedStudentId)||null
   const availableDays=selectedStudent?.availability || []
   const dayLabels=['D','S','T','Q','Q','S','S']
   const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+  const libraryMatches=library.filter(ex=>{const q=libraryQuery.trim().toLowerCase();return !q||ex.name.toLowerCase().includes(q)||(ex.category||'').toLowerCase().includes(q)||(ex.muscleGroups||[]).join(' ').toLowerCase().includes(q)})
 
-  const chooseStudent = st => {
-    setSelectedStudentId(st.id)
-    setStudentQuery('')
-    setScheduledDays([])
-    setStudentOpen(false)
+  const applyTemplate=id=>{
+    setTemplateId(id)
+    if(!id)return
+    const t=templates.find(x=>x.id===id)
+    if(!t)return
+    setWorkoutName(t.name||'');setDescription(t.description||'');setIntensity(t.intensity||'Moderada')
+    setEstimatedMinutes(String(t.estimatedMinutes||0));setNotes(t.notes||'')
+    setItems((t.exercises||[]).map(normalizeItem))
+    setMessage('Template carregado. Você pode editar tudo antes de prescrever.')
   }
 
-  const toggleScheduledDay = day => {
-    if(!availableDays.includes(day)) return
-    setScheduledDays(v=>v.includes(day)?v.filter(x=>x!==day):[...v,day].sort((a,b)=>a-b))
+  useEffect(()=>{if(initialTemplateId&&templates.length)applyTemplate(initialTemplateId)},[initialTemplateId,templates.length])
+
+  const chooseStudent=st=>{setSelectedStudentId(st.id);setStudentQuery('');setScheduledDays([]);setStudentOpen(false)}
+  const toggleScheduledDay=day=>{if(!availableDays.includes(day))return;setScheduledDays(v=>v.includes(day)?v.filter(x=>x!==day):[...v,day].sort((a,b)=>a-b))}
+
+  const mappedExercises=()=>items.map(ex=>({
+    exerciseId:ex.exerciseId||null,name:ex.name.trim(),sets:Math.max(1,parseInt(ex.sets,10)||1),
+    reps:Math.max(1,parseInt(ex.reps,10)||1),suggestedWeight:Math.max(0,Number(String(ex.weight).replace(',','.'))||0),
+    restSeconds:Math.max(0,parseInt(ex.rest,10)||0),notes:ex.notes.trim(),videoUrl:ex.videoUrl.trim()
+  }))
+
+  const validateBase=()=>{
+    if(!workoutName.trim())return 'Informe o nome do treino.'
+    if(!items.length)return 'Adicione pelo menos um exercício.'
+    if(items.some(ex=>!ex.name.trim()))return 'Preencha o nome de todos os exercícios.'
+    return ''
+  }
+
+  const saveTemplate=async()=>{
+    const validation=validateBase();if(validation){setError(validation);return}
+    setBusy('template');setError('');setMessage('')
+    try{
+      const body={name:workoutName.trim(),description,intensity,notes,estimatedMinutes:Number(estimatedMinutes)||0,exercises:mappedExercises()}
+      if(templateId){await apiRequest(`/templates/${templateId}`,{token,method:'PATCH',body});setMessage('Template atualizado.')}
+      else{const created=await apiRequest('/templates',{token,method:'POST',body});setTemplateId(created.id);setMessage('Template salvo.')}
+      await refreshBackend()
+    }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   const saveWorkout=async()=>{
-    if(!selectedStudent?.id) { setError('Vincule um aluno antes de criar o treino.'); return }
-    if(!workoutName.trim()) { setError('Informe o nome do treino.'); return }
-    if(!scheduledDays.length) { setError('Selecione ao menos um dia disponível do aluno.'); return }
-    if(!items.length) { setError('Adicione pelo menos um exercício.'); return }
-    if(items.some(ex=>!ex.name.trim())) { setError('Preencha o nome de todos os exercícios.'); return }
-
-    setBusy(true);setError('')
+    const validation=validateBase();if(validation){setError(validation);return}
+    if(!selectedStudent?.id){setError('Selecione um aluno para prescrever.');return}
+    if(!scheduledDays.length){setError('Selecione ao menos um dia disponível do aluno.');return}
+    setBusy('workout');setError('');setMessage('')
     try{
       await apiRequest('/workouts',{token,method:'POST',body:{
-        studentId:selectedStudent.id,
-        name:workoutName.trim(),
-        model,
-        notes:notes.trim(),
-        scheduledDays,
-        exercises:items.map(ex=>({
-          name:ex.name.trim(),
-          sets:Math.max(1,Number.parseInt(ex.sets,10)||1),
-          reps:Math.max(1,Number.parseInt(ex.reps,10)||1),
-          suggestedWeight:Math.max(0,Number.parseFloat(String(ex.weight).replace(',','.'))||0),
-          restSeconds:Math.max(0,Number.parseInt(ex.rest,10)||0),
-        }))
+        studentId:selectedStudent.id,templateId:templateId||null,name:workoutName.trim(),model,
+        description,intensity,estimatedMinutes:Number(estimatedMinutes)||0,notes,scheduledDays,exercises:mappedExercises()
       }})
-      await refreshBackend()
-      setPage('workouts')
-    }catch(e){setError(e.message)}finally{setBusy(false)}
+      await refreshBackend();setPage('workouts')
+    }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
-  if(syncingStudents) return <div className="page-stack builder-page">
-    <button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-    <section className="panel empty-state"><UsersRound size={34}/><h2>Atualizando alunos...</h2><p>Buscando os vínculos mais recentes antes de montar a prescrição.</p></section>
-  </div>
-
-  if(!linkedStudents.length) return <div className="page-stack builder-page">
-    <button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
-    <section className="panel empty-state"><UsersRound size={34}/><h2>Nenhum aluno vinculado</h2><p>Gere um link de convite e aguarde o aluno aceitar antes de montar a prescrição.</p><button className="primary-btn" onClick={()=>setPage('students')}>Ir para Alunos</button></section>
-  </div>
+  if(syncing)return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button><section className="panel empty-state"><Dumbbell size={34}/><h2>Atualizando dados...</h2><p>Carregando alunos, biblioteca e templates.</p></section></div>
 
   return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-    <section className="page-heading"><span className="eyebrow">Novo treino</span><h1>Montar prescrição</h1><p>Nenhum exercício de exemplo é carregado. Cadastre somente o que deseja prescrever.</p></section>
-    {error && <div className="app-error-banner">{error}</div>}
+    <section className="page-heading"><span className="eyebrow">Treino personalizado</span><h1>Montar prescrição</h1><p>Crie do zero ou carregue um template e edite antes de salvar.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
     <div className="builder-layout"><div className="builder-main">
-      <section className="panel form-panel"><h3>Informações gerais</h3><div className="form-grid">
-        <label className="combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentOpen ? studentQuery : (selectedStudent?.name || '')} onFocus={()=>{setStudentQuery('');setStudentOpen(true)}} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Selecione ou busque um aluno"/><button type="button" onClick={()=>{setStudentQuery('');setStudentOpen(v=>!v)}}><ChevronDown size={16}/></button>{studentOpen && <div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span><strong>{st.name}</strong><small>{st.email}</small></span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
-        <label><span>Modelo de treino</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
+      <section className="panel form-panel"><div className="panel-head"><div><h3>Informações gerais</h3><p>Dados persistidos no treino e no template.</p></div></div><div className="form-grid">
+        <label className="span-2"><span>Usar template</span><select value={templateId} onChange={e=>applyTemplate(e.target.value)}><option value="">Começar do zero</option>{templates.map(t=><option value={t.id} key={t.id}>{t.name}</option>)}</select></label>
+        <label className="combo-field"><span>Aluno para prescrição</span><div className="combo-box"><Search size={17}/><input value={studentOpen?studentQuery:(selectedStudent?.name||'')} onFocus={()=>{setStudentQuery('');setStudentOpen(true)}} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder={linkedStudents.length?'Selecione o aluno':'Nenhum aluno vinculado'}/><button type="button" onClick={()=>{setStudentQuery('');setStudentOpen(v=>!v)}}><ChevronDown size={16}/></button>{studentOpen&&<div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} className={selectedStudentId===st.id?'active':''} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span><strong>{st.name}</strong><small>{st.email}</small></span>{selectedStudentId===st.id&&<Check size={14}/>}</button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>
+        <label><span>Modelo</span><select value={model} onChange={e=>setModel(e.target.value)}><option>AB</option><option>ABC</option><option>FULLBODY</option></select></label>
         <label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Treino A — Peito e costas"/></label>
+        <label><span>Intensidade geral</span><select value={intensity} onChange={e=>setIntensity(e.target.value)}><option>Leve</option><option>Moderada</option><option>Alta</option></select></label>
+        <label><span>Tempo médio estimado (min)</span><input type="number" min="0" value={estimatedMinutes} onChange={e=>setEstimatedMinutes(e.target.value)}/></label>
+        <label className="span-2"><span>Descrição</span><textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Objetivo e contexto do treino"/></label>
         <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações para o aluno"/></label>
       </div></section>
 
-      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Adicione manualmente os exercícios desta prescrição.</p></div><button className="secondary-btn compact" type="button" onClick={addExercise}><Plus size={16}/> Adicionar exercício</button></div>
-        <div className="builder-exercises">
-          {items.length?items.map((ex,idx)=><div className="builder-exercise manual-exercise" key={ex.id}>
-            <span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span>
-            <div className="builder-ex-main editable-exercise-name"><input value={ex.name} onChange={e=>updateItem(ex.id,'name',e.target.value)} placeholder="Nome do exercício"/><input value={ex.group} onChange={e=>updateItem(ex.id,'group',e.target.value)} placeholder="Grupo muscular (opcional)"/></div>
-            <label><small>Séries</small><input type="number" min="1" value={ex.sets} onChange={e=>updateItem(ex.id,'sets',e.target.value)}/></label>
-            <label><small>Reps</small><input type="number" min="1" value={ex.reps} onChange={e=>updateItem(ex.id,'reps',e.target.value)}/></label>
-            <label><small>Carga kg</small><input type="number" min="0" step="0.5" value={ex.weight} onChange={e=>updateItem(ex.id,'weight',e.target.value)}/></label>
-            <label><small>Descanso s</small><input type="number" min="0" value={ex.rest} onChange={e=>updateItem(ex.id,'rest',e.target.value)}/></label>
-            <button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button>
-          </div>):<div className="empty-state compact-empty"><Dumbbell size={28}/><h3>Nenhum exercício adicionado</h3><p>Clique em “Adicionar exercício” para começar a prescrição.</p></div>}
-        </div>
+      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Adicione da biblioteca ou crie um item específico para este treino.</p></div><div className="builder-add-actions"><button className="secondary-btn compact" onClick={()=>setLibraryOpen(true)}><BookOpen size={16}/> Biblioteca</button><button className="secondary-btn compact" onClick={addExercise}><Plus size={16}/> Manual</button></div></div>
+        <div className="builder-exercises">{items.length?items.map((ex,idx)=><div className="builder-exercise manual-exercise extended-exercise" key={ex.id}>
+          <span className="drag-handle">⋮⋮</span><span className="exercise-index">{idx+1}</span>
+          <div className="builder-ex-main editable-exercise-name"><input value={ex.name} onChange={e=>updateItem(ex.id,'name',e.target.value)} placeholder="Nome do exercício"/><textarea value={ex.notes} onChange={e=>updateItem(ex.id,'notes',e.target.value)} placeholder="Observação padrão do exercício"/></div>
+          <label><small>Séries</small><input type="number" min="1" value={ex.sets} onChange={e=>updateItem(ex.id,'sets',e.target.value)}/></label>
+          <label><small>Reps</small><input type="number" min="1" value={ex.reps} onChange={e=>updateItem(ex.id,'reps',e.target.value)}/></label>
+          <label><small>Carga kg</small><input type="number" min="0" step="0.5" value={ex.weight} onChange={e=>updateItem(ex.id,'weight',e.target.value)}/></label>
+          <label><small>Descanso s</small><input type="number" min="0" value={ex.rest} onChange={e=>updateItem(ex.id,'rest',e.target.value)}/></label>
+          <label className="exercise-video-url"><small>Vídeo URL</small><input value={ex.videoUrl} onChange={e=>updateItem(ex.id,'videoUrl',e.target.value)} placeholder="Opcional"/></label>
+          <button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button>
+        </div>):<div className="empty-state compact-empty"><Dumbbell size={28}/><h3>Nenhum exercício</h3><p>Adicione da biblioteca ou manualmente.</p></div>}</div>
       </section>
     </div>
-    <aside className="builder-side"><section className="panel routine-readonly"><div className="panel-head"><div><h3>Disponibilidade do aluno</h3><p>Escolhida por {selectedStudent?.name}.</p></div><Lock size={18}/></div>
-      <div className="weekday-picker readonly selectable-days">{dayLabels.map((d,i)=><button type="button" key={i} disabled={!availableDays.includes(i)} className={scheduledDays.includes(i)?'active':''} onClick={()=>toggleScheduledDay(i)}>{d}</button>)}</div>
-      <div className="availability-summary"><strong>{availableDays.length} dias disponíveis</strong><span>{availableDays.map(i=>dayNames[i]).join(' · ') || 'Ainda não informado'}</span></div>
-      <div className="info-note">O aluno define quando consegue treinar. Selecione, dentro desses dias, quando este treino poderá ser executado.</div>
-    </section>
-    <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name}</strong></div><div><span>Modelo</span><strong>{model}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Dias</span><strong>{scheduledDays.map(i=>dayNames[i]).join(' · ') || '—'}</strong></div><button className="primary-btn full" disabled={busy||!scheduledDays.length||!items.length||!workoutName.trim()} onClick={saveWorkout}>{busy?'Salvando...':'Salvar e prescrever'} <Check size={17}/></button></section></aside></div>
+    <aside className="builder-side">
+      <section className="panel routine-readonly"><div className="panel-head"><div><h3>Rotina de execução</h3><p>{selectedStudent?`Disponibilidade escolhida por ${selectedStudent.name}.`:'Selecione um aluno para definir os dias.'}</p></div><Lock size={18}/></div>
+        <div className="weekday-picker readonly selectable-days">{dayLabels.map((d,i)=><button type="button" key={i} disabled={!availableDays.includes(i)} className={scheduledDays.includes(i)?'active':''} onClick={()=>toggleScheduledDay(i)}>{d}</button>)}</div>
+        <div className="availability-summary"><strong>{availableDays.length} dias disponíveis</strong><span>{availableDays.map(i=>dayNames[i]).join(' · ')||'Selecione um aluno'}</span></div>
+      </section>
+      <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name||'—'}</strong></div><div><span>Template</span><strong>{templateId?'Sim':'Não'}</strong></div><div><span>Intensidade</span><strong>{intensity}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div className="summary-actions"><button className="secondary-btn full" disabled={busy==='template'||!items.length||!workoutName.trim()} onClick={saveTemplate}>{busy==='template'?'Salvando...':templateId?'Atualizar template':'Salvar como template'}</button><button className="primary-btn full" disabled={busy==='workout'||!selectedStudent||!scheduledDays.length||!items.length||!workoutName.trim()} onClick={saveWorkout}>{busy==='workout'?'Prescrevendo...':'Salvar e prescrever'} <Check size={17}/></button></div></section>
+    </aside></div>
+
+    {libraryOpen&&<div className="modal-backdrop" onClick={()=>setLibraryOpen(false)}><div className="standard-modal library-picker-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setLibraryOpen(false)}><X size={18}/></button><div className="modal-icon"><BookOpen size={22}/></div><h2>Adicionar da biblioteca</h2><div className="search-box"><Search size={18}/><input value={libraryQuery} onChange={e=>setLibraryQuery(e.target.value)} placeholder="Nome, categoria ou músculo"/></div><div className="library-picker-list">{libraryMatches.length?libraryMatches.map(ex=><button key={ex.id} onClick={()=>addLibraryExercise(ex)}><div><strong>{ex.name}</strong><small>{ex.category||'Sem categoria'} · {ex.intensity}</small></div><Plus size={17}/></button>):<div className="empty-state compact-empty">Nenhum exercício encontrado.</div>}</div></div></div>}
   </div>
 }
 
