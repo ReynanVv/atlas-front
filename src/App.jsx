@@ -957,6 +957,58 @@ function Workouts({ setPage, token, backend, onUseTemplate, onNewTemplate }) {
   </div>
 }
 
+function TemplateBuilder({ setPage, token }) {
+  const [name,setName]=useState('')
+  const [description,setDescription]=useState('')
+  const [intensity,setIntensity]=useState('Moderada')
+  const [notes,setNotes]=useState('')
+  const [estimatedMinutes,setEstimatedMinutes]=useState('45')
+  const [items,setItems]=useState([])
+  const [library,setLibrary]=useState([])
+  const [libraryQuery,setLibraryQuery]=useState('')
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
+
+  useEffect(()=>{apiRequest('/exercises',{token}).then(setLibrary).catch(e=>setError(e.message))},[token])
+  const makeItem=(src={})=>({id:globalThis.crypto?.randomUUID?.()||String(Date.now()+Math.random()),exerciseId:src.id||src.exerciseId||null,name:src.name||'',sets:String(src.sets||3),reps:String(src.reps||10),weight:String(src.suggestedWeight||0),rest:String(src.restSeconds||60),notes:src.notes||'',videoUrl:src.videoUrl||''})
+  const addManual=()=>setItems(v=>[...v,makeItem()])
+  const addFromLibrary=ex=>setItems(v=>[...v,makeItem(ex)])
+  const update=(id,key,value)=>setItems(v=>v.map(x=>x.id===id?{...x,[key]:value}:x))
+  const remove=id=>setItems(v=>v.filter(x=>x.id!==id))
+  const filtered=library.filter(ex=>(ex.name+' '+ex.category+' '+(ex.muscleGroups||[]).join(' ')).toLowerCase().includes(libraryQuery.toLowerCase()))
+
+  const save=async()=>{
+    if(!name.trim()||!items.length||items.some(x=>!x.name.trim()))return
+    setBusy(true);setError('')
+    try{
+      await apiRequest('/templates',{token,method:'POST',body:{name:name.trim(),description,intensity,notes,estimatedMinutes:Number(estimatedMinutes)||0,exercises:items.map(x=>({exerciseId:x.exerciseId,name:x.name,sets:Number(x.sets)||1,reps:Number(x.reps)||1,suggestedWeight:Number(x.weight)||0,restSeconds:Number(x.rest)||0,notes:x.notes,videoUrl:x.videoUrl}))}})
+      setPage('workouts')
+    }catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+
+  return <div className="page-stack builder-page">
+    <button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos templates</button>
+    <section className="page-heading"><span className="eyebrow">Template</span><h1>Novo template de treino</h1><p>Crie um modelo reutilizável e edite tudo antes de prescrever.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}
+    <div className="builder-layout"><div className="builder-main">
+      <section className="panel form-panel"><h3>Informações do template</h3><div className="form-grid">
+        <label className="span-2"><span>Nome</span><input value={name} onChange={e=>setName(e.target.value)} placeholder="Ex.: Hipertrofia A"/></label>
+        <label><span>Intensidade geral</span><select value={intensity} onChange={e=>setIntensity(e.target.value)}><option>Leve</option><option>Moderada</option><option>Alta</option></select></label>
+        <label><span>Tempo estimado</span><input type="number" min="0" value={estimatedMinutes} onChange={e=>setEstimatedMinutes(e.target.value)}/></label>
+        <label className="span-2"><span>Descrição</span><textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Objetivo do template"/></label>
+        <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações gerais"/></label>
+      </div></section>
+      <section className="panel"><div className="panel-head"><div><h3>Exercícios</h3><p>Use a biblioteca ou adicione manualmente.</p></div><button className="secondary-btn compact" onClick={addManual}><Plus size={16}/> Manual</button></div>
+        <div className="library-picker"><div className="search-box"><Search size={17}/><input value={libraryQuery} onChange={e=>setLibraryQuery(e.target.value)} placeholder="Buscar na biblioteca"/></div>{libraryQuery&&<div className="library-picker-results">{filtered.slice(0,8).map(ex=><button key={ex.id} onClick={()=>{addFromLibrary(ex);setLibraryQuery('')}}><Dumbbell size={15}/><span><strong>{ex.name}</strong><small>{ex.category} · {ex.intensity}</small></span><Plus size={15}/></button>)}</div>}</div>
+        <div className="builder-exercises">{items.length?items.map((ex,idx)=><div className="builder-exercise manual-exercise template-exercise-row" key={ex.id}>
+          <span className="exercise-index">{idx+1}</span><div className="builder-ex-main editable-exercise-name"><input value={ex.name} onChange={e=>update(ex.id,'name',e.target.value)} placeholder="Nome do exercício"/><input value={ex.notes} onChange={e=>update(ex.id,'notes',e.target.value)} placeholder="Observação padrão"/></div>
+          <label><small>Séries</small><input type="number" min="1" value={ex.sets} onChange={e=>update(ex.id,'sets',e.target.value)}/></label><label><small>Reps</small><input type="number" min="1" value={ex.reps} onChange={e=>update(ex.id,'reps',e.target.value)}/></label><label><small>Carga</small><input type="number" min="0" step="0.5" value={ex.weight} onChange={e=>update(ex.id,'weight',e.target.value)}/></label><label><small>Descanso</small><input type="number" min="0" value={ex.rest} onChange={e=>update(ex.id,'rest',e.target.value)}/></label><button className="remove-btn" onClick={()=>remove(ex.id)}><X size={17}/></button>
+        </div>):<div className="empty-state compact-empty">Adicione exercícios ao template.</div>}</div>
+      </section>
+    </div><aside className="builder-side"><section className="panel summary-panel"><h3>Resumo</h3><div><span>Exercícios</span><strong>{items.length}</strong></div><div><span>Intensidade</span><strong>{intensity}</strong></div><div><span>Tempo</span><strong>{estimatedMinutes||0} min</strong></div><button className="primary-btn full" disabled={busy||!name.trim()||!items.length} onClick={save}>{busy?'Salvando...':'Salvar template'} <Check size={17}/></button></section></aside></div>
+  </div>
+}
+
 function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTemplateId = '' }) {
   const linkedStudents=backend.students || []
   const templates=backend.templates || []
