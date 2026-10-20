@@ -670,33 +670,41 @@ function Messages({ trainer = false, token }) {
   </div>
 }
 
-function TrainerDashboard({ setPage, user, backend }) {
+function TrainerDashboard({ setPage, user, backend, onOpenStudent }) {
   const [period, setPeriod] = useState('Dia')
   const studentsData=backend.students || []
   const workouts=backend.workouts || []
-  const completed=workouts.filter(w=>w.latestSession?.completedAt)
+  const dashboard=backend.dashboard || {students:[],attention:[]}
+  const completed=workouts.filter(w=>w.status==='Realizado' || w.latestSession?.completedAt)
   const inProgress=workouts.filter(w=>w.latestSession && !w.latestSession.completedAt)
+  const progressById=new Map((dashboard.students||[]).map(st=>[st.id,st]))
+
   return <div className="page-stack"><section className="welcome-row">
-    <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe os alunos e prescrições registradas no Atlas.</p></div>
+    <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
+
   <div className="stats-grid">
-    <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="dados do backend"/>
-    <StatCard icon={ListChecks} label="Treinos prescritos" value={workouts.length} detail={`${completed.length} concluídos`}/>
+    <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="ativos no backend"/>
+    <StatCard icon={ListChecks} label="Treinos prescritos" value={workouts.length} detail={`${completed.length} realizados`}/>
     <StatCard icon={Activity} label="Em execução" value={inProgress.length} detail="sessões abertas"/>
+    <StatCard icon={Bell} label="Precisam de atenção" value={(dashboard.attention||[]).length} detail="sem treino recente ou sem prescrição"/>
   </div>
+
   <div className="grid-2 dashboard-grid">
     <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições registradas.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
       <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
-      <div className="activity-list">{workouts.length?workouts.slice(0,5).map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
+      <div className="activity-list">{workouts.length?workouts.slice(0,6).map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name} · {w.intensity} · {w.estimatedMinutes||0} min</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
     </section>
-    <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alertas aparecerão quando houver regras reais de frequência.</p></div><Bell size={19}/></div>
-      <div className="empty-state compact-empty">Nenhum alerta real disponível no momento.</div>
+
+    <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alunos sem treino recente ou sem prescrição.</p></div><Bell size={19}/></div>
+      {(dashboard.attention||[]).length?<div className="attention-list">{dashboard.attention.map(st=><button key={st.id} onClick={()=>onOpenStudent?.(st.id)}><Avatar initials={initialsOf(st.name)} size="sm" src={st.avatarUrl}/><div><strong>{st.name}</strong><small>{st.workoutCount?st.lastCompletedAt?`Último treino ${new Date(st.lastCompletedAt).toLocaleDateString('pt-BR')}`:'Nenhum treino concluído':'Sem treino prescrito'}</small></div><ChevronRight size={17}/></button>)}</div>:<div className="empty-state compact-empty">Nenhum alerta de frequência no momento.</div>}
     </section>
   </div>
-  <section className="panel"><div className="panel-head"><div><h3>Visão geral dos alunos</h3><p>Somente alunos realmente vinculados.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
-    {studentsData.length?<div className="student-table"><div className="student-table-head"><span>Aluno</span><span>Disponibilidade</span><span>Treinos</span><span>Status</span><span>E-mail</span><span></span></div>
-    {studentsData.map(st=><div className="student-table-row" key={st.id}><div><Avatar initials={initialsOf(st.name)} size="sm"/><strong>{st.name}</strong></div><span>{st.availability?.length || 0} dias</span><strong>{st.workoutCount || 0}</strong><Badge>Vinculado</Badge><span>{st.email}</span><ChevronRight size={18}/></div>)}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
+
+  <section className="panel"><div className="panel-head"><div><h3>Progresso dos alunos</h3><p>Frequência, volume e melhor carga registrados no backend.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
+    {studentsData.length?<div className="student-table progress-student-table"><div className="student-table-head"><span>Aluno</span><span>Concluídos</span><span>Volume</span><span>Carga máx.</span><span>Último treino</span><span></span></div>
+    {studentsData.map(st=>{const p=progressById.get(st.id)||{};return <button className="student-table-row dashboard-student-row" key={st.id} onClick={()=>onOpenStudent?.(st.id)}><div><Avatar initials={initialsOf(st.name)} size="sm" src={st.avatarUrl}/><strong>{st.name}</strong></div><strong>{p.completedWorkouts||0}</strong><span>{Math.round(Number(p.totalVolume||0)).toLocaleString('pt-BR')}</span><span>{Number(p.maxWeight||0).toFixed(1)} kg</span><span>{p.lastCompletedAt?new Date(p.lastCompletedAt).toLocaleDateString('pt-BR'):'—'}</span><ChevronRight size={18}/></button>})}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
   </section>
   </div>
 }
