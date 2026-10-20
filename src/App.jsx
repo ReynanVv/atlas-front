@@ -1050,14 +1050,16 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
 
 function AppShell() {
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
+  const emptyBackend={invitations:[],students:[],workouts:[],availability:[],exercises:[],templates:[],progress:null}
   const [token,setToken]=useState('')
   const [user,setUser]=useState(null)
   const [restoringSession,setRestoringSession]=useState(true)
   const [page,setPage]=useState('home')
-  const [backend,setBackend]=useState({ invitations:[], students:[], workouts:[], availability:[] })
+  const [backend,setBackend]=useState(emptyBackend)
   const [backendError,setBackendError]=useState('')
   const [selectedStudentId,setSelectedStudentId]=useState('')
   const [selectedWorkoutId,setSelectedWorkoutId]=useState('')
+  const [selectedTemplateId,setSelectedTemplateId]=useState('')
 
   const profile = user?.role === 'trainer' ? 'trainer' : 'student'
 
@@ -1066,19 +1068,22 @@ function AppShell() {
     setBackendError('')
     try {
       if (nextUser.role === 'trainer') {
-        const [invitations, studentsData, workouts] = await Promise.all([
+        const [invitations, studentsData, workouts, exercises, templates] = await Promise.all([
           apiRequest('/invitations',{token:nextToken}),
           apiRequest('/trainer/students',{token:nextToken}),
           apiRequest('/workouts',{token:nextToken}),
+          apiRequest('/exercises',{token:nextToken}),
+          apiRequest('/templates',{token:nextToken}),
         ])
-        setBackend({ invitations, students:studentsData, workouts, availability:[] })
+        setBackend({ invitations, students:studentsData, workouts, availability:[], exercises, templates, progress:null })
       } else {
-        const [invitations, availabilityData, workouts] = await Promise.all([
+        const [invitations, availabilityData, workouts, progress] = await Promise.all([
           apiRequest('/invitations',{token:nextToken}),
           apiRequest('/availability',{token:nextToken}),
           apiRequest('/workouts',{token:nextToken}),
+          apiRequest('/progress/me',{token:nextToken}),
         ])
-        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [] })
+        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [], exercises:[], templates:[], progress })
       }
     } catch (e) {
       setBackendError(e.message)
@@ -1093,91 +1098,69 @@ function AppShell() {
       try{
         const data=await apiRequest('/me',{token:storedToken})
         if(cancelled)return
-        setToken(storedToken)
-        setUser(data.user)
-        setPage(data.user.role==='trainer'?'dashboard':'home')
-      }catch{
-        storeToken('')
-      }finally{
-        if(!cancelled)setRestoringSession(false)
-      }
+        setToken(storedToken);setUser(data.user);setPage(data.user.role==='trainer'?'dashboard':'home')
+      }catch{storeToken('')}finally{if(!cancelled)setRestoringSession(false)}
     }
-    restore()
-    return()=>{cancelled=true}
+    restore();return()=>{cancelled=true}
   },[])
 
-  useEffect(()=>{ refreshBackend() },[token,user?.id])
+  useEffect(()=>{refreshBackend()},[token,user?.id,user?.role])
 
   useEffect(()=>{
     if(!token || !user) return
     const refresh=()=>refreshBackend()
-    const onVisibility=()=>{ if(document.visibilityState==='visible') refresh() }
-    window.addEventListener('focus',refresh)
-    document.addEventListener('visibilitychange',onVisibility)
-    return()=>{
-      window.removeEventListener('focus',refresh)
-      document.removeEventListener('visibilitychange',onVisibility)
-    }
-  },[token,user?.id])
+    const onVisibility=()=>{if(document.visibilityState==='visible')refresh()}
+    window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',onVisibility)
+    return()=>{window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',onVisibility)}
+  },[token,user?.id,user?.role])
 
-  useEffect(()=>{
-    if(token && user) refreshBackend()
-  },[page])
-
-  const handleLogin = (nextToken,nextUser) => {
-    storeToken(nextToken)
-    setToken(nextToken)
-    setUser(nextUser)
-    setPage(nextUser.role === 'trainer' ? 'dashboard' : 'home')
+  const handleLogin=(nextToken,nextUser)=>{
+    storeToken(nextToken);setToken(nextToken);setUser(nextUser);setBackend(emptyBackend)
+    setPage(nextUser.role==='trainer'?'dashboard':'home')
   }
 
-  const openStudent = id => { setSelectedStudentId(id); setPage('studentDetail') }
-  const openWorkout = id => { setSelectedWorkoutId(id); setPage('workout') }
-
-  const logout = () => {
-    const currentToken = token
-    storeToken('')
-    setToken('')
-    setUser(null)
-    setBackend({ invitations:[], students:[], workouts:[], availability:[] })
-    setSelectedStudentId('')
-    setSelectedWorkoutId('')
-    setPage('home')
-    if (currentToken) apiRequest('/auth/logout',{token:currentToken,method:'POST'}).catch(()=>{})
+  const handleUserChange=nextUser=>{
+    setUser(nextUser);setBackend(emptyBackend);setSelectedStudentId('');setSelectedWorkoutId('');setSelectedTemplateId('')
+    setPage(nextUser.role==='trainer'?'dashboard':'home')
+    refreshBackend(token,nextUser)
   }
 
-  if (inviteToken) return <InviteOnboarding inviteToken={inviteToken} onComplete={handleLogin}/>
+  const openStudent=id=>{setSelectedStudentId(id);setPage('studentDetail')}
+  const openWorkout=id=>{setSelectedWorkoutId(id);setPage('workout')}
+  const openBuilder=(templateId='')=>{setSelectedTemplateId(templateId);setPage('builder')}
 
-  if (restoringSession) return <div className="auth-screen session-restore-screen">
-    <div className="session-restore-card"><Logo/><span className="eyebrow">Atlas</span><h2>Restaurando sua sessão...</h2><p>Validando seu acesso.</p></div>
-  </div>
+  const logout=()=>{
+    const currentToken=token
+    storeToken('');setToken('');setUser(null);setBackend(emptyBackend)
+    setSelectedStudentId('');setSelectedWorkoutId('');setSelectedTemplateId('');setPage('home')
+    if(currentToken)apiRequest('/auth/logout',{token:currentToken,method:'POST'}).catch(()=>{})
+  }
 
-  if (!token || !user) return <Login onEnter={handleLogin}/>
+  if(inviteToken)return <InviteOnboarding inviteToken={inviteToken} onComplete={handleLogin}/>
+  if(restoringSession)return <div className="auth-screen session-restore-screen"><div className="session-restore-card"><Logo/><span className="eyebrow">Atlas</span><h2>Restaurando sua sessão...</h2><p>Validando seu acesso.</p></div></div>
+  if(!token||!user)return <Login onEnter={handleLogin}/>
 
   let content
-  if (profile === 'student') {
-    content = page === 'home' ? <StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/> :
-      page === 'workout' ? <WorkoutExecution setPage={setPage} token={token} workout={backend.workouts.find(w=>w.id===selectedWorkoutId) || null} refreshBackend={refreshBackend}/> :
-      page === 'history' ? <StudentHistory backend={backend}/> :
-      page === 'progress' ? <StudentProgress backend={backend}/> :
-      <Messages backend={backend}/>
-  } else {
-    content = page === 'dashboard' ? <TrainerDashboard setPage={setPage} user={user} backend={backend}/> :
-      page === 'students' ? <Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/> :
-      page === 'studentDetail' ? <StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId}/> :
-      page === 'library' ? <ExerciseLibrary setPage={setPage}/> :
-      page === 'workouts' ? <Workouts setPage={setPage} backend={backend}/> :
-      page === 'builder' ? <WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/> :
-      <Messages trainer backend={backend}/>
+  if(profile==='student'){
+    content=page==='home'?<StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/>:
+      page==='workout'?<WorkoutExecution setPage={setPage} token={token} workout={backend.workouts.find(w=>w.id===selectedWorkoutId)||null} refreshBackend={refreshBackend}/>:
+      page==='history'?<StudentHistory backend={backend}/>:
+      page==='progress'?<StudentProgress backend={backend}/>:
+      <Messages token={token} backend={backend}/>
+  }else{
+    content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} backend={backend}/>:
+      page==='students'?<Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/>:
+      page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token}/>:
+      page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
+      page==='workouts'?<Workouts setPage={setPage} backend={backend} token={token} refreshBackend={refreshBackend} onOpenBuilder={openBuilder}/>:
+      page==='builder'?<WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} initialTemplateId={selectedTemplateId}/>:
+      <Messages trainer token={token} backend={backend}/>
   }
 
   return <div className="app-shell">
-    <Topbar profile={profile} user={user} onLogout={logout}/>
+    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onLogout={logout}/>
     <SideNav profile={profile} page={page} setPage={setPage}/>
-    <main className="app-main">
-      {backendError && <div className="app-error-banner">{backendError}</div>}
-      {content}
-    </main>
+    <main className="app-main">{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
     <BottomNav profile={profile} page={page} setPage={setPage}/>
   </div>
 }
