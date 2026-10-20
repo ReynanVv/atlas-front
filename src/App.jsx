@@ -908,35 +908,52 @@ function ExerciseLibrary({ setPage, token }) {
   </div>
 }
 
-function Workouts({ setPage, backend, token, refreshBackend, onOpenBuilder }) {
+function Workouts({ setPage, token, backend, onUseTemplate, onNewTemplate }) {
   const [query,setQuery]=useState('')
   const [tab,setTab]=useState('workouts')
+  const [templates,setTemplates]=useState([])
+  const [error,setError]=useState('')
   const [busy,setBusy]=useState('')
+
+  const loadTemplates=async()=>{
+    setBusy('templates');setError('')
+    try{setTemplates(await apiRequest('/templates',{token}))}
+    catch(e){setError(e.message)}finally{setBusy('')}
+  }
+  useEffect(()=>{loadTemplates()},[token])
+
   const rows=(backend.workouts || []).map(w=>({
     id:w.id,name:w.name,student:w.studentName || 'Aluno não identificado',
     routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
-    model:w.model,intensity:w.intensity,estimatedMinutes:w.estimatedMinutes,status:w.status || 'Pendente'
+    model:w.model,intensity:w.intensity || 'Moderada',estimatedMinutes:w.estimatedMinutes || 0,
+    status:w.status || (w.latestSession?.completedAt?'Realizado':w.latestSession?'Pendente':'Pendente')
   }))
-  const filtered=rows.filter(w=>`${w.name} ${w.student} ${w.model} ${w.status}`.toLowerCase().includes(query.toLowerCase()))
-  const templates=backend.templates || []
-  const toneFor=s=>s==='Realizado'?'green':s==='Não Realizado'?'gray':'light'
+  const filtered=rows.filter(w=>(w.name+' '+w.student+' '+w.model+' '+w.status).toLowerCase().includes(query.toLowerCase()))
+  const toneFor=status=>status==='Realizado'?'green':status==='Não Realizado'?'gray':'light'
 
   const removeTemplate=async(id)=>{
-    setBusy(id)
-    try{await apiRequest(`/templates/${id}`,{token,method:'DELETE'});await refreshBackend()}
-    finally{setBusy('')}
+    setBusy(id);setError('')
+    try{await apiRequest('/templates/'+id,{token,method:'DELETE'});await loadTemplates()}
+    catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   return <div className="page-stack">
-    <section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Prescrições e modelos salvos no backend.</p></div><button className="primary-btn" onClick={()=>onOpenBuilder('')}><Plus size={18}/> Criar treino</button></section>
-    <div className="tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos prescritos</button><button className={tab==='templates'?'active':''} onClick={()=>setTab('templates')}>Templates <span>{templates.length}</span></button></div>
+    <section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Prescrições e modelos reutilizáveis persistidos no backend.</p></div><div className="heading-actions">{tab==='templates'&&<button className="secondary-btn" onClick={onNewTemplate}><Plus size={18}/> Novo template</button>}<button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button></div></section>
+    {error&&<div className="app-error-banner">{error}</div>}
+    <div className="tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos prescritos</button><button className={tab==='templates'?'active':''} onClick={()=>setTab('templates')}>Templates</button></div>
 
     {tab==='workouts'?<>
       <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno, modelo ou status"/></div></div>
       <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
-      {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><span><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes||0} min</small></span></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
+      {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes?(w.estimatedMinutes+' min'):'tempo não informado'}</small></div></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
       {!filtered.length&&<div className="empty-state">Nenhum treino prescrito ainda.</div>}</div></section>
-    </>:<section className="template-grid">{templates.length?templates.map(t=><article className="panel template-card" key={t.id}><div className="panel-head"><div><Badge tone="light">{t.intensity}</Badge><h3>{t.name}</h3><p>{t.description || 'Sem descrição.'}</p></div><button className="remove-btn" disabled={busy===t.id} onClick={()=>removeTemplate(t.id)}><X size={16}/></button></div><div className="template-meta"><span><Clock3 size={15}/>{t.estimatedMinutes||0} min</span><span><Dumbbell size={15}/>{t.exercises?.length||0} exercícios</span></div><div className="template-actions"><button className="secondary-btn compact" onClick={()=>onOpenBuilder(t.id)}>Usar como base</button></div></article>):<div className="panel empty-state"><ListChecks size={32}/><h3>Nenhum template criado</h3><p>Abra o criador de treino, monte os exercícios e salve como template.</p><button className="primary-btn" onClick={()=>onOpenBuilder('')}>Criar template</button></div>}</section>}
+    </>:<section className="template-grid">
+      {busy==='templates'&&!templates.length?<div className="panel empty-state">Carregando templates...</div>:templates.length?templates.map(t=><article className="panel template-card" key={t.id}>
+        <div className="panel-head"><div><Badge tone="light">{t.intensity}</Badge><h3>{t.name}</h3><p>{t.description || 'Sem descrição'}</p></div><button className="remove-btn" disabled={busy===t.id} onClick={()=>removeTemplate(t.id)}><X size={16}/></button></div>
+        <div className="template-meta"><span><Dumbbell size={15}/>{t.exercises?.length||0} exercícios</span><span><Clock3 size={15}/>{t.estimatedMinutes||0} min</span></div>
+        <div className="template-actions"><button className="primary-btn compact" onClick={()=>onUseTemplate(t.id)}>Usar como base</button></div>
+      </article>):<div className="panel empty-state"><ListChecks size={34}/><h3>Nenhum template criado</h3><p>Crie um modelo reutilizável com exercícios, séries, repetições, carga, descanso e observações.</p><button className="primary-btn" onClick={onNewTemplate}><Plus size={17}/> Criar template</button></div>}
+    </section>}
   </div>
 }
 
