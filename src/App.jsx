@@ -1056,6 +1056,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
   const [description,setDescription]=useState('')
   const [intensity,setIntensity]=useState('Moderada')
   const [estimatedMinutes,setEstimatedMinutes]=useState('45')
+  const [scheduledTime,setScheduledTime]=useState('')
   const [scheduledDays,setScheduledDays]=useState([])
   const [notes,setNotes]=useState('')
   const [libraryOpen,setLibraryOpen]=useState(false)
@@ -1139,7 +1140,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
     try{
       await apiRequest('/workouts',{token,method:'POST',body:{
         studentId:selectedStudent.id,templateId:templateId||null,name:workoutName.trim(),model,
-        description,intensity,estimatedMinutes:Number(estimatedMinutes)||0,notes,scheduledDays,exercises:mappedExercises()
+        description,intensity,estimatedMinutes:Number(estimatedMinutes)||0,scheduledTime,notes,scheduledDays,exercises:mappedExercises()
       }})
       await refreshBackend();setPage('workouts')
     }catch(e){setError(e.message)}finally{setBusy('')}
@@ -1158,6 +1159,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
         <label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Treino A — Peito e costas"/></label>
         <label><span>Intensidade geral</span><select value={intensity} onChange={e=>setIntensity(e.target.value)}><option>Leve</option><option>Moderada</option><option>Alta</option></select></label>
         <label><span>Tempo médio estimado (min)</span><input type="number" min="0" value={estimatedMinutes} onChange={e=>setEstimatedMinutes(e.target.value)}/></label>
+        <label><span>Horário sugerido</span><input type="time" value={scheduledTime} onChange={e=>setScheduledTime(e.target.value)}/></label>
         <label className="span-2"><span>Descrição</span><textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Objetivo e contexto do treino"/></label>
         <label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações para o aluno"/></label>
       </div></section>
