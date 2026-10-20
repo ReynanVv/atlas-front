@@ -1298,7 +1298,7 @@ function AppShell() {
       page==='progress'?<StudentProgress backend={backend}/>:
       <Messages token={token} backend={backend}/>
   }else{
-    content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} backend={backend}/>:
+    content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} backend={backend} onOpenStudent={openStudent}/>:
       page==='students'?<Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/>:
       page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token}/>:
       page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
