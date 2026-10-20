@@ -610,24 +610,62 @@ function StudentHistory({ backend }) {
 }
 
 function StudentProgress({ backend }) {
-  const workouts=backend.workouts || []
-  const completed=workouts.filter(w=>w.latestSession?.completedAt).length
-  const started=workouts.filter(w=>w.latestSession).length
-  const completionRate=workouts.length?Math.round(completed/workouts.length*100):0
-  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Evolução</span><h1>Seu progresso em números</h1><p>Os indicadores abaixo usam somente dados já registrados no backend.</p></section>
+  const progress=backend.progress || {summary:{completedWorkouts:0,workoutsLast30Days:0,totalVolume:0,maxWeight:0},sessions:[],exercises:[]}
+  const summary=progress.summary || {}
+  const sessions=progress.sessions || []
+  const maxVolume=Math.max(1,...sessions.map(s=>Number(s.volume||0)))
+  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Evolução</span><h1>Seu progresso em números</h1><p>Carga máxima, volume e frequência calculados a partir das séries registradas.</p></section>
     <div className="stats-grid">
-      <StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="total recebido"/>
-      <StatCard icon={Flame} label="Treinos iniciados" value={started} detail="sessões abertas ou concluídas"/>
-      <StatCard icon={Trophy} label="Treinos concluídos" value={completed} detail={`${completionRate}% das prescrições`}/>
+      <StatCard icon={Trophy} label="Treinos concluídos" value={summary.completedWorkouts||0} detail="total"/>
+      <StatCard icon={CalendarDays} label="Últimos 30 dias" value={summary.workoutsLast30Days||0} detail="treinos"/>
+      <StatCard icon={Dumbbell} label="Carga máxima" value={`${Number(summary.maxWeight||0).toFixed(1)} kg`} detail="maior série registrada"/>
+      <StatCard icon={Activity} label="Volume total" value={Math.round(Number(summary.totalVolume||0)).toLocaleString('pt-BR')} detail="kg × repetições"/>
     </div>
-    <section className="panel empty-state"><LineChart size={32}/><h3>Evolução de carga e volume</h3><p>Esses gráficos aparecerão quando houver um endpoint real de agregação das séries registradas. Nenhum valor de exemplo é exibido.</p></section>
+    <section className="panel"><div className="panel-head"><div><h3>Volume por treino</h3><p>Volume real de cada sessão concluída.</p></div><LineChart size={20}/></div>{sessions.length?<div className="progress-bars">{sessions.slice(-12).map(s=><div className="progress-bar-row" key={s.id}><span>{new Date(s.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(s.volume||0)/maxVolume*100)}%`}}></i></div><strong>{Math.round(Number(s.volume||0)).toLocaleString('pt-BR')}</strong></div>)}</div>:<div className="empty-state compact-empty">Conclua treinos e registre séries para gerar o gráfico.</div>}</section>
+    <section className="panel"><div className="panel-head"><div><h3>Melhores cargas por exercício</h3><p>Baseado nas séries concluídas.</p></div><Dumbbell size={20}/></div>{progress.exercises?.length?<div className="progress-exercise-list">{progress.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} treino(s) · volume {Math.round(Number(ex.volume||0)).toLocaleString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Ainda não há dados de carga.</div>}</section>
   </div>
 }
 
-function Messages({ trainer = false, backend }) {
-  const participants=trainer ? (backend.students || []) : []
-  return <div className="page-stack chat-page"><section className="page-heading"><span className="eyebrow">Mensagens</span><h1>{trainer ? 'Converse com seus alunos' : 'Fale com seu treinador'}</h1><p>As conversas aparecerão quando o backend de mensagens estiver implementado.</p></section>
-    <section className="panel empty-state"><MessageCircle size={34}/><h3>Nenhuma conversa registrada</h3><p>{trainer && participants.length ? `Você tem ${participants.length} aluno(s) vinculado(s), mas ainda não existe endpoint de mensagens.` : 'O Atlas ainda não possui mensagens persistidas no backend.'}</p></section>
+function Messages({ trainer = false, token }) {
+  const [contacts,setContacts]=useState([])
+  const [selectedId,setSelectedId]=useState('')
+  const [conversation,setConversation]=useState(null)
+  const [draft,setDraft]=useState('')
+  const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
+
+  const loadContacts=async()=>{
+    try{
+      const data=await apiRequest('/messages/contacts',{token})
+      setContacts(data)
+      if(selectedId && !data.some(c=>c.id===selectedId)){setSelectedId('');setConversation(null)}
+    }catch(e){setError(e.message)}
+  }
+  useEffect(()=>{loadContacts()},[token])
+
+  const openContact=async(id)=>{
+    setSelectedId(id);setBusy('conversation');setError('')
+    try{setConversation(await apiRequest(`/messages/${id}`,{token}));await loadContacts()}
+    catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const sendMessage=async()=>{
+    if(!selectedId||!draft.trim())return
+    setBusy('send');setError('')
+    try{
+      await apiRequest(`/messages/${selectedId}`,{token,method:'POST',body:{body:draft.trim()}})
+      setDraft('')
+      setConversation(await apiRequest(`/messages/${selectedId}`,{token}))
+      await loadContacts()
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  return <div className="page-stack chat-page"><section className="page-heading"><span className="eyebrow">Mensagens</span><h1>{trainer?'Converse com seus alunos':'Fale com seus treinadores'}</h1><p>Conversas persistidas no Atlas.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}
+    <div className="real-chat-layout">
+      <section className="panel chat-contact-panel"><h3>Conversas</h3>{contacts.length?<div className="chat-contact-list">{contacts.map(c=><button key={c.id} className={selectedId===c.id?'active':''} onClick={()=>openContact(c.id)}><Avatar initials={initialsOf(c.name)} size="sm"/><div><strong>{c.name}</strong><small>{c.lastMessage||c.email}</small></div>{c.unreadCount>0&&<span className="chat-unread">{c.unreadCount}</span>}</button>)}</div>:<div className="empty-state compact-empty">Nenhum contato vinculado.</div>}</section>
+      <section className="panel conversation-panel">{selectedId?<>{busy==='conversation'&&!conversation?<div className="empty-state compact-empty">Carregando conversa...</div>:conversation?<><div className="conversation-head"><Avatar initials={initialsOf(conversation.contact?.trainerId===selectedId?conversation.contact?.trainerName:conversation.contact?.studentName)} size="sm"/><strong>{contacts.find(c=>c.id===selectedId)?.name}</strong></div><div className="conversation-messages">{conversation.messages.length?conversation.messages.map(m=><div key={m.id} className={`chat-bubble ${m.senderId===selectedId?'received':'sent'}`}><span>{m.body}</span><small>{new Date(m.createdAt).toLocaleString('pt-BR')}</small></div>):<div className="empty-state compact-empty">Envie a primeira mensagem.</div>}</div><div className="message-composer"><input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey)sendMessage()}} placeholder="Escreva uma mensagem"/><button className="send-btn" disabled={!draft.trim()||busy==='send'} onClick={sendMessage}><Send size={18}/></button></div></>:null}</>:<div className="empty-state"><MessageCircle size={34}/><h3>Selecione uma conversa</h3><p>Escolha um aluno ou treinador ao lado.</p></div>}</section>
+    </div>
   </div>
 }
 
