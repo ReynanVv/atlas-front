@@ -284,7 +284,13 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
   const [profileOpen,setProfileOpen]=useState(false)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [notifications,setNotifications]=useState([])
+  const [editingProfile,setEditingProfile]=useState(false)
+  const [profileName,setProfileName]=useState(user?.name||'')
+  const [profileImage,setProfileImage]=useState('')
   const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
+
+  useEffect(()=>{setProfileName(user?.name||'');setProfileImage('')},[user?.id,user?.name])
 
   const loadNotifications=async()=>{
     try{setNotifications(await apiRequest('/notifications',{token}))}catch{}
@@ -293,22 +299,43 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
 
   const switchProfile=async(next)=>{
     if(next===profile){setProfileOpen(false);return}
-    setBusy('profile')
+    setBusy('profile');setError('')
     try{
       const data=await apiRequest('/profiles/active',{token,method:'PUT',body:{profile:next}})
-      onUserChange(data.user)
+      const me=await apiRequest('/me',{token})
+      onUserChange(me.user||data.user)
       setProfileOpen(false)
-    }finally{setBusy('')}
+    }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   const addProfile=async(next)=>{
-    setBusy('profile')
+    setBusy('profile');setError('')
     try{
       await apiRequest('/profiles',{token,method:'POST',body:{profile:next}})
-      const data=await apiRequest('/profiles/active',{token,method:'PUT',body:{profile:next}})
-      onUserChange(data.user)
+      await apiRequest('/profiles/active',{token,method:'PUT',body:{profile:next}})
+      const me=await apiRequest('/me',{token})
+      onUserChange(me.user)
       setProfileOpen(false)
-    }finally{setBusy('')}
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const chooseAvatar=async file=>{
+    if(!file)return
+    if(!file.type.startsWith('image/')){setError('Selecione uma imagem.');return}
+    if(file.size>1024*1024){setError('A foto deve ter no máximo 1 MB.');return}
+    try{setProfileImage(await fileToDataUrl(file));setError('')}catch(e){setError(e.message)}
+  }
+
+  const saveProfile=async()=>{
+    setBusy('saveProfile');setError('')
+    try{
+      const data=await apiRequest('/me',{token,method:'PATCH',body:{
+        name:profileName,
+        ...(profileImage?{avatarUrl:profileImage}:{})
+      }})
+      onUserChange(data.user)
+      setEditingProfile(false)
+    }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   const unread=notifications.filter(n=>!n.readAt).length
@@ -327,16 +354,24 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
       </div>
 
       <div className="profile-switch topbar-popover-wrap">
-        <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false)}}>
+        <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false);setEditingProfile(false)}}>
           <Avatar initials={initialsOf(user?.name)} size="sm" src={user?.avatarUrl}/><span><small>{profile==='student'?'Aluno':'Treinador'}</small><strong>{user?.name}</strong></span><ChevronDown size={15}/>
         </button>
         {profileOpen&&<div className="topbar-popover profile-popover">
-          <strong>{user?.name}</strong><small>{user?.email}</small>
+          {!editingProfile?<><div className="profile-popover-user"><Avatar initials={initialsOf(user?.name)} size="md" src={user?.avatarUrl}/><div><strong>{user?.name}</strong><small>{user?.email}</small></div></div>
+          {error&&<div className="popover-error">{error}</div>}
           <div className="profile-options">
             {profiles.includes('trainer')&&<button className={profile==='trainer'?'active':''} disabled={!!busy} onClick={()=>switchProfile('trainer')}><UsersRound size={16}/> Treinador</button>}
             {profiles.includes('student')&&<button className={profile==='student'?'active':''} disabled={!!busy} onClick={()=>switchProfile('student')}><UserRound size={16}/> Aluno</button>}
             {!profiles.includes(other)&&<button disabled={!!busy} onClick={()=>addProfile(other)}><CirclePlus size={16}/> Ativar perfil {other==='trainer'?'Treinador':'Aluno'}</button>}
-          </div>
+            <button onClick={()=>setEditingProfile(true)}><Settings size={16}/> Editar nome e foto</button>
+          </div></>:<div className="profile-edit-box">
+            <button className="auth-back" onClick={()=>setEditingProfile(false)}><ArrowLeft size={15}/> Voltar</button>
+            <div className="profile-photo-edit"><Avatar initials={initialsOf(profileName)} size="lg" src={profileImage||user?.avatarUrl}/><label><Upload size={15}/> Escolher foto<input type="file" accept="image/*" onChange={e=>chooseAvatar(e.target.files?.[0])}/></label></div>
+            <label><span>Nome</span><input value={profileName} onChange={e=>setProfileName(e.target.value)}/></label>
+            {error&&<div className="popover-error">{error}</div>}
+            <button className="primary-btn full" disabled={!profileName.trim()||busy==='saveProfile'} onClick={saveProfile}>{busy==='saveProfile'?'Salvando...':'Salvar perfil'}</button>
+          </div>}
         </div>}
         <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
