@@ -1107,3 +1107,46 @@ button{color:inherit}
   .progress-student-table .student-table-head,
   .progress-student-table .student-table-row{min-width:560px}
 }
+
+
+/* Requirement-completion UI */
+.today-exercise-list{display:grid;gap:7px;margin:14px 0}
+.today-exercise-list>div{
+  display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;align-items:center;
+  padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.08)
+}
+.today-exercise-list>div>span{
+  width:28px;height:28px;border-radius:8px;background:#B8E400;color:#0B1B3A;
+  display:grid;place-items:center;font-size:10px;font-weight:900
+}
+.today-exercise-list strong,.today-exercise-list small{display:block}
+.today-exercise-list small{margin-top:2px;color:#C4CCD5;font-size:9px}
+
+.history-note{display:block;margin-top:5px;color:#69737A;font-size:9px;font-style:italic}
+
+.progress-student-table .student-table-head,
+.progress-student-table .student-table-row{
+  grid-template-columns:minmax(180px,1.4fr) 90px 110px 100px 120px 30px
+}
+.dashboard-student-row{
+  width:100%;border:0;background:#fff;text-align:left;cursor:pointer
+}
+.dashboard-student-row:hover{background:#F7F8F9}
+
+.attention-list{display:grid;gap:6px;margin-top:10px}
+.attention-list button{
+  width:100%;border:1px solid #E6E9ED;background:#fff;border-radius:11px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:10px;text-align:left
+}
+.attention-list button>div{min-width:0}
+.attention-list strong,.attention-list small{display:block}
+.attention-list small{font-size:9px;color:#69737A;margin-top:2px}
+
+@media(max-width:680px){
+  .today-exercise-list>div{background:#F1F4F6}
+  .today-exercise-list small{color:#69737A}
+  .progress-student-table{overflow-x:auto}
+  .progress-student-table .student-table-head,
+  .progress-student-table .student-table-row{min-width:720px}
+}
