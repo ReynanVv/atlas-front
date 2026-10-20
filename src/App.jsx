@@ -764,9 +764,109 @@ function StudentDetail({ setPage, backend, studentId }) {
   </div>
 }
 
-function ExerciseLibrary({ setPage }) {
-  return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>A biblioteca ainda não possui exercícios persistidos no backend.</p></div></section>
-    <section className="panel empty-state"><BookOpen size={34}/><h3>Nenhum exercício cadastrado</h3><p>Para testar uma prescrição sem mocks, adicione exercícios manualmente ao criar o treino.</p><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Criar treino</button></section>
+function ExerciseLibrary({ setPage, token }) {
+  const [items,setItems]=useState([])
+  const [filters,setFilters]=useState({name:'',category:'',muscle:'',intensity:''})
+  const [modal,setModal]=useState(false)
+  const [form,setForm]=useState({name:'',category:'',muscleGroups:'',intensity:'Moderada',description:'',videoUrl:'',videoFile:null})
+  const [videoSrc,setVideoSrc]=useState('')
+  const [videoTitle,setVideoTitle]=useState('')
+  const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
+
+  const load=async(next=filters)=>{
+    setBusy('load');setError('')
+    try{
+      const q=new URLSearchParams()
+      Object.entries(next).forEach(([k,v])=>{if(String(v||'').trim())q.set(k,String(v).trim())})
+      setItems(await apiRequest(`/exercises${q.toString()?`?${q.toString()}`:''}`,{token}))
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+  useEffect(()=>{load()},[])
+
+  const updateFilter=(key,value)=>{
+    const next={...filters,[key]:value}
+    setFilters(next)
+    if(key!=='name')load(next)
+  }
+
+  const submit=async()=>{
+    if(!form.name.trim())return
+    setBusy('save');setError('')
+    try{
+      let videoBase64=''
+      let videoMime=''
+      let videoFilename=''
+      if(form.videoFile){
+        videoBase64=await fileToDataUrl(form.videoFile)
+        videoMime=form.videoFile.type
+        videoFilename=form.videoFile.name
+      }
+      await apiRequest('/exercises',{token,method:'POST',body:{
+        name:form.name,
+        category:form.category,
+        muscleGroups:form.muscleGroups.split(',').map(v=>v.trim()).filter(Boolean),
+        intensity:form.intensity,
+        description:form.description,
+        videoUrl:form.videoUrl,
+        videoBase64,videoMime,videoFilename,
+      }})
+      setForm({name:'',category:'',muscleGroups:'',intensity:'Moderada',description:'',videoUrl:'',videoFile:null})
+      setModal(false)
+      await load()
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const play=async(ex)=>{
+    setError('')
+    try{
+      if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc)
+      if(ex.videoUrl){setVideoSrc(ex.videoUrl);setVideoTitle(ex.name);return}
+      if(ex.hasUploadedVideo){
+        const blob=await apiBlob(`/exercises/${ex.id}/video`,token)
+        setVideoSrc(URL.createObjectURL(blob));setVideoTitle(ex.name)
+      }
+    }catch(e){setError(e.message)}
+  }
+
+  const remove=async(id)=>{
+    setBusy(id);setError('')
+    try{await apiRequest(`/exercises/${id}`,{token,method:'DELETE'});await load()}
+    catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  return <div className="page-stack">
+    <section className="page-heading action-heading"><div><span className="eyebrow">Biblioteca</span><h1>Exercícios</h1><p>Cadastre, filtre e reutilize exercícios reais nas prescrições.</p></div><button className="primary-btn" onClick={()=>setModal(true)}><Plus size={18}/> Novo exercício</button></section>
+    {error&&<div className="app-error-banner">{error}</div>}
+    <section className="panel exercise-filter-panel">
+      <div className="exercise-filter-grid">
+        <div className="search-box"><Search size={18}/><input value={filters.name} onChange={e=>setFilters(v=>({...v,name:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&load()} placeholder="Nome do exercício"/></div>
+        <input value={filters.category} onChange={e=>updateFilter('category',e.target.value)} placeholder="Categoria"/>
+        <input value={filters.muscle} onChange={e=>updateFilter('muscle',e.target.value)} placeholder="Grupo muscular"/>
+        <select value={filters.intensity} onChange={e=>updateFilter('intensity',e.target.value)}><option value="">Todas intensidades</option><option>Leve</option><option>Moderada</option><option>Alta</option></select>
+        <button className="secondary-btn compact" onClick={()=>load()} disabled={busy==='load'}>{busy==='load'?'Buscando...':'Buscar'}</button>
+      </div>
+    </section>
+
+    {items.length?<div className="exercise-library-grid">{items.map(ex=><article className="panel exercise-library-card" key={ex.id}>
+      <div className="panel-head"><div><Badge tone="light">{ex.intensity}</Badge><h3>{ex.name}</h3><p>{ex.category || 'Sem categoria'}</p></div><button className="remove-btn" disabled={busy===ex.id} onClick={()=>remove(ex.id)}><X size={16}/></button></div>
+      <div className="muscle-tags">{(ex.muscleGroups||[]).map(m=><span key={m}>{m}</span>)}</div>
+      <p className="exercise-description">{ex.description || 'Sem descrição.'}</p>
+      <div className="exercise-card-actions">{(ex.videoUrl||ex.hasUploadedVideo)&&<button className="secondary-btn compact" onClick={()=>play(ex)}><Video size={16}/> Ver vídeo</button>}<button className="text-btn" onClick={()=>setPage('builder')}>Usar em treino <ChevronRight size={15}/></button></div>
+    </article>)}</div>:<section className="panel empty-state"><BookOpen size={34}/><h3>Nenhum exercício encontrado</h3><p>Cadastre o primeiro exercício ou ajuste os filtros.</p></section>}
+
+    {modal&&<div className="modal-backdrop" onClick={()=>setModal(false)}><div className="standard-modal exercise-create-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" onClick={()=>setModal(false)}><X size={18}/></button><div className="modal-icon"><Dumbbell size={23}/></div><h2>Novo exercício</h2>
+      <label className="field-label">Nome</label><input value={form.name} onChange={e=>setForm(v=>({...v,name:e.target.value}))} placeholder="Ex.: Supino reto"/>
+      <div className="form-grid compact-form-grid"><label><span>Categoria</span><input value={form.category} onChange={e=>setForm(v=>({...v,category:e.target.value}))} placeholder="Peito"/></label><label><span>Intensidade</span><select value={form.intensity} onChange={e=>setForm(v=>({...v,intensity:e.target.value}))}><option>Leve</option><option>Moderada</option><option>Alta</option></select></label></div>
+      <label className="field-label">Grupos musculares</label><input value={form.muscleGroups} onChange={e=>setForm(v=>({...v,muscleGroups:e.target.value}))} placeholder="Peitoral, tríceps"/>
+      <label className="field-label">Descrição</label><textarea value={form.description} onChange={e=>setForm(v=>({...v,description:e.target.value}))} placeholder="Orientações de execução"/>
+      <label className="field-label">URL de vídeo (opcional)</label><input value={form.videoUrl} onChange={e=>setForm(v=>({...v,videoUrl:e.target.value}))} placeholder="https://..."/>
+      <label className="video-upload-field"><Upload size={18}/><span>{form.videoFile?form.videoFile.name:'Ou enviar vídeo próprio (até 8 MB)'}</span><input type="file" accept="video/*" onChange={e=>setForm(v=>({...v,videoFile:e.target.files?.[0]||null}))}/></label>
+      <button className="primary-btn full" disabled={!form.name.trim()||busy==='save'} onClick={submit}>{busy==='save'?'Salvando...':'Salvar exercício'} <Check size={17}/></button>
+    </div></div>}
+
+    {videoSrc&&<div className="modal-backdrop" onClick={()=>{if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc);setVideoSrc('')}}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>{if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc);setVideoSrc('')}}><X size={18}/></button><h3>{videoTitle}</h3><video src={videoSrc} controls playsInline/></div></div>}
   </div>
 }
 
