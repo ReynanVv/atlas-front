@@ -379,8 +379,11 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
   const pendingInvite = backend.invitations.find(i => i.status === 'Pending')
   const acceptedInvite = backend.invitations.find(i => i.status === 'Accepted')
   const workouts = backend.workouts || []
-  const currentWorkout = workouts.find(w => !w.latestSession?.completedAt) || workouts[0]
-  const completedCount = workouts.filter(w => w.latestSession?.completedAt).length
+  const today = new Date().getDay()
+  const currentWorkout = workouts.find(w => (w.scheduledDays||[]).includes(today) && w.status !== 'Realizado')
+    || workouts.find(w => w.status === 'Pendente')
+    || workouts[0]
+  const completedCount = Number(backend.progress?.summary?.completedWorkouts || 0)
 
   useEffect(()=>{ setRoutineDays(backend.availability || []) },[backend.availability])
 
@@ -422,11 +425,11 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
 
     {currentWorkout ? <section className="today-card">
       <div className="today-main">
-        <div className="today-meta"><Badge>{currentWorkout.latestSession?.completedAt ? 'Concluído' : currentWorkout.latestSession ? 'Em andamento' : 'Treino disponível'}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span></div>
+        <div className="today-meta"><Badge tone={currentWorkout.status==='Realizado'?'green':currentWorkout.status==='Não Realizado'?'gray':'light'}>{currentWorkout.status}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span><span>{currentWorkout.intensity}</span><span><Clock3 size={14}/> {currentWorkout.estimatedMinutes||0} min</span></div>
         <h2>{currentWorkout.name}</h2>
-        <p>{currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
+        <p>{currentWorkout.description || currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
         <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm" src={currentWorkout.trainerAvatarUrl}/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
-        {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => onOpenWorkout(currentWorkout.id)}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
+        {currentWorkout.status!=='Realizado' && <button className="primary-btn" onClick={() => onOpenWorkout(currentWorkout.id)}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession&&!currentWorkout.latestSession.completedAt ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
         <div className="workout-figure"><Dumbbell size={54}/></div>
@@ -444,10 +447,10 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
     <div className="section-title"><div><h2>Meus treinos</h2><p>Prescrições recebidas do seu professor.</p></div><button onClick={() => setPage('history')}>Ver histórico <ChevronRight size={16}/></button></div>
     <section className="panel no-pad upcoming-main">
       <div className="compact-list">
-        {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row" key={w.id} onClick={()=>!w.latestSession?.completedAt&&onOpenWorkout(w.id)}>
+        {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row workout-rich-row" key={w.id} onClick={()=>w.status!=='Realizado'&&onOpenWorkout(w.id)}>
           <div className="date-box"><strong>{String(i+1).padStart(2,'0')}</strong><small>{w.model}</small></div>
-          <div><strong>{w.name}</strong><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ') || 'Sem dias definidos'}</small></div>
-          <Badge tone={w.latestSession?.completedAt?'green':'light'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em andamento':'Pendente'}</Badge><ChevronRight size={18}/>
+          <div className="workout-list-main"><strong>{w.name}</strong><small className="workout-trainer-line"><Avatar initials={initialsOf(w.trainerName)} size="xs" src={w.trainerAvatarUrl}/>{w.trainerName}</small><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ')||'Sem dias'} · {w.intensity} · {w.estimatedMinutes||0} min</small></div>
+          <Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge><ChevronRight size={18}/>
         </button>) : <div className="empty-state">Nenhum treino prescrito ainda.</div>}
       </div>
     </section>
@@ -464,8 +467,8 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
       <section className="panel">
         <div className="panel-head"><div><h3>Resumo</h3><p>Dados do seu fluxo atual.</p></div><Trophy size={20}/></div>
         <div className="month-summary">
-          <div className="progress-ring" style={{'--progress':`${workouts.length ? Math.round(completedCount/workouts.length*100) : 0}%`}}><span>{workouts.length ? Math.round(completedCount/workouts.length*100) : 0}<small>%</small></span></div>
-          <div><strong>{completedCount} de {workouts.length} treinos</strong><span>{completedCount ? 'Treinos concluídos ficam registrados no histórico.' : 'Conclua seu primeiro treino para iniciar seu histórico.'}</span></div>
+          <div className="progress-ring" style={{'--progress':`${workouts.length ? Math.round(Math.min(completedCount,workouts.length)/workouts.length*100) : 0}%`}}><span>{workouts.length ? Math.round(Math.min(completedCount,workouts.length)/workouts.length*100) : 0}<small>%</small></span></div>
+          <div><strong>{completedCount} treino(s) concluído(s)</strong><span>{completedCount ? 'Treinos concluídos ficam registrados no histórico.' : 'Conclua seu primeiro treino para iniciar seu histórico.'}</span></div>
         </div>
       </section>
     </div>
@@ -598,19 +601,11 @@ function WorkoutExecution({ setPage, token, workout, refreshBackend }) {
 }
 
 function StudentHistory({ backend }) {
+  const sessions=backend.progress?.sessions || []
   const workouts=backend.workouts || []
-  const history=workouts.filter(w=>w.latestSession)
-  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Histórico</span><h1>Seus treinos</h1><p>Somente sessões registradas no backend.</p></section>
-    <section className="panel no-pad"><div className="history-list">{history.length?history.map(w=>{
-      const date=w.latestSession?.completedAt || w.latestSession?.startedAt || w.createdAt
-      const label=date?new Date(date).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase():'—'
-      const status=w.latestSession?.completedAt?'Realizado':'Em andamento'
-      return <div className="history-row" key={w.id}>
-        <div className="history-date">{label}</div>
-        <div className="history-main"><strong>{w.name}</strong><small><Avatar initials={initialsOf(w.trainerName)} size="xs"/>{w.trainerName || 'Treinador'}</small></div>
-        <Badge tone={status==='Realizado'?'green':'light'}>{status}</Badge><ChevronRight size={18}/>
-      </div>
-    }):<div className="empty-state">Nenhuma sessão registrada ainda.</div>}</div></section>
+  const trainerByWorkout=new Map(workouts.map(w=>[w.id,{name:w.trainerName,avatar:w.trainerAvatarUrl}]))
+  return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Histórico</span><h1>Seus treinos anteriores</h1><p>Todas as sessões concluídas registradas no backend.</p></section>
+    <section className="panel no-pad"><div className="history-list">{sessions.length?[...sessions].reverse().map(item=>{const trainer=trainerByWorkout.get(item.workoutId)||{};return <div className="history-row" key={item.id}><div className="history-date">{new Date(item.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase()}</div><div className="history-main"><strong>{item.workoutName}</strong><small><Avatar initials={initialsOf(trainer.name)} size="xs" src={trainer.avatar}/>{trainer.name||'Treinador'} · volume {Math.round(Number(item.volume||0)).toLocaleString('pt-BR')}</small>{item.notes&&<span className="history-note">{item.notes}</span>}</div><Badge tone="green">Realizado</Badge></div>}):<div className="empty-state">Nenhum treino concluído ainda.</div>}</div></section>
   </div>
 }
 
