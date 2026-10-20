@@ -1191,7 +1191,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
 
 function AppShell() {
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
-  const emptyBackend={invitations:[],students:[],workouts:[],availability:[],exercises:[],templates:[],progress:null}
+  const emptyBackend={invitations:[],students:[],workouts:[],availability:[],exercises:[],templates:[],progress:null,dashboard:null}
   const [token,setToken]=useState('')
   const [user,setUser]=useState(null)
   const [restoringSession,setRestoringSession]=useState(true)
@@ -1209,14 +1209,15 @@ function AppShell() {
     setBackendError('')
     try {
       if (nextUser.role === 'trainer') {
-        const [invitations, studentsData, workouts, exercises, templates] = await Promise.all([
+        const [invitations, studentsData, workouts, exercises, templates, dashboard] = await Promise.all([
           apiRequest('/invitations',{token:nextToken}),
           apiRequest('/trainer/students',{token:nextToken}),
           apiRequest('/workouts',{token:nextToken}),
           apiRequest('/exercises',{token:nextToken}),
           apiRequest('/templates',{token:nextToken}),
+          apiRequest('/trainer/dashboard',{token:nextToken}),
         ])
-        setBackend({ invitations, students:studentsData, workouts, availability:[], exercises, templates, progress:null })
+        setBackend({ invitations, students:studentsData, workouts, availability:[], exercises, templates, progress:null, dashboard })
       } else {
         const [invitations, availabilityData, workouts, progress] = await Promise.all([
           apiRequest('/invitations',{token:nextToken}),
@@ -1224,7 +1225,7 @@ function AppShell() {
           apiRequest('/workouts',{token:nextToken}),
           apiRequest('/progress/me',{token:nextToken}),
         ])
-        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [], exercises:[], templates:[], progress })
+        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [], exercises:[], templates:[], progress, dashboard:null })
       }
     } catch (e) {
       setBackendError(e.message)
