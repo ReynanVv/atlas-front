@@ -70,8 +70,8 @@ function Logo({ compact = false }) {
   </div>
 }
 
-function Avatar({ initials = 'AS', size = 'md' }) {
-  return <div className={`avatar avatar-${size}`}>{initials}</div>
+function Avatar({ initials = 'AS', size = 'md', src = '' }) {
+  return <div className={`avatar avatar-${size}`}>{src?<img src={src} alt="" />:initials}</div>
 }
 
 function Badge({ children, tone = 'green' }) {
@@ -328,7 +328,7 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
 
       <div className="profile-switch topbar-popover-wrap">
         <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false)}}>
-          <Avatar initials={initialsOf(user?.name)} size="sm"/><span><small>{profile==='student'?'Aluno':'Treinador'}</small><strong>{user?.name}</strong></span><ChevronDown size={15}/>
+          <Avatar initials={initialsOf(user?.name)} size="sm" src={user?.avatarUrl}/><span><small>{profile==='student'?'Aluno':'Treinador'}</small><strong>{user?.name}</strong></span><ChevronDown size={15}/>
         </button>
         {profileOpen&&<div className="topbar-popover profile-popover">
           <strong>{user?.name}</strong><small>{user?.email}</small>
@@ -425,7 +425,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
         <div className="today-meta"><Badge>{currentWorkout.latestSession?.completedAt ? 'Concluído' : currentWorkout.latestSession ? 'Em andamento' : 'Treino disponível'}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span></div>
         <h2>{currentWorkout.name}</h2>
         <p>{currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
-        <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm"/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
+        <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm" src={currentWorkout.trainerAvatarUrl}/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
         {!currentWorkout.latestSession?.completedAt && <button className="primary-btn" onClick={() => onOpenWorkout(currentWorkout.id)}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
@@ -663,7 +663,7 @@ function Messages({ trainer = false, token }) {
   return <div className="page-stack chat-page"><section className="page-heading"><span className="eyebrow">Mensagens</span><h1>{trainer?'Converse com seus alunos':'Fale com seus treinadores'}</h1><p>Conversas persistidas no Atlas.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="real-chat-layout">
-      <section className="panel chat-contact-panel"><h3>Conversas</h3>{contacts.length?<div className="chat-contact-list">{contacts.map(c=><button key={c.id} className={selectedId===c.id?'active':''} onClick={()=>openContact(c.id)}><Avatar initials={initialsOf(c.name)} size="sm"/><div><strong>{c.name}</strong><small>{c.lastMessage||c.email}</small></div>{c.unreadCount>0&&<span className="chat-unread">{c.unreadCount}</span>}</button>)}</div>:<div className="empty-state compact-empty">Nenhum contato vinculado.</div>}</section>
+      <section className="panel chat-contact-panel"><h3>Conversas</h3>{contacts.length?<div className="chat-contact-list">{contacts.map(c=><button key={c.id} className={selectedId===c.id?'active':''} onClick={()=>openContact(c.id)}><Avatar initials={initialsOf(c.name)} size="sm" src={c.avatarUrl}/><div><strong>{c.name}</strong><small>{c.lastMessage||c.email}</small></div>{c.unreadCount>0&&<span className="chat-unread">{c.unreadCount}</span>}</button>)}</div>:<div className="empty-state compact-empty">Nenhum contato vinculado.</div>}</section>
       <section className="panel conversation-panel">{selectedId?<>{busy==='conversation'&&!conversation?<div className="empty-state compact-empty">Carregando conversa...</div>:conversation?<><div className="conversation-head"><Avatar initials={initialsOf(conversation.contact?.trainerId===selectedId?conversation.contact?.trainerName:conversation.contact?.studentName)} size="sm"/><strong>{contacts.find(c=>c.id===selectedId)?.name}</strong></div><div className="conversation-messages">{conversation.messages.length?conversation.messages.map(m=><div key={m.id} className={`chat-bubble ${m.senderId===selectedId?'received':'sent'}`}><span>{m.body}</span><small>{new Date(m.createdAt).toLocaleString('pt-BR')}</small></div>):<div className="empty-state compact-empty">Envie a primeira mensagem.</div>}</div><div className="message-composer"><input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey)sendMessage()}} placeholder="Escreva uma mensagem"/><button className="send-btn" disabled={!draft.trim()||busy==='send'} onClick={sendMessage}><Send size={18}/></button></div></>:null}</>:<div className="empty-state"><MessageCircle size={34}/><h3>Selecione uma conversa</h3><p>Escolha um aluno ou treinador ao lado.</p></div>}</section>
     </div>
   </div>
@@ -736,7 +736,7 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
 
     {linkedStudents.length ? <div className="student-card-grid">{linkedStudents.map((st)=><article className="student-card clickable" key={st.id} onClick={()=>onOpenStudent(st.id)}>
-      <div className="student-card-top"><Avatar initials={initialsOf(st.name)}/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
+      <div className="student-card-top"><Avatar initials={initialsOf(st.name)} src={st.avatarUrl}/><div><h3>{st.name}</h3><p>{st.email}</p></div><button onClick={e=>e.stopPropagation()}><MoreHorizontal size={19}/></button></div>
       <div className="student-kpis">
         <div><span>Disponibilidade</span><strong>{st.availability?.length || 0} dias</strong></div>
         <div><span>Treinos</span><strong>{st.workoutCount || 0}</strong></div>
