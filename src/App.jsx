@@ -45,6 +45,24 @@ async function apiRequest(path, { token, method = 'GET', body } = {}) {
 }
 
 
+async function apiBlob(path, token) {
+  const response=await fetch(`${API_URL}${path}`,{headers:{Authorization:`Bearer ${token}`}})
+  if(!response.ok){
+    const payload=await response.json().catch(()=>({}))
+    throw new Error(payload?.error || 'Não foi possível carregar o arquivo.')
+  }
+  return response.blob()
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader()
+    reader.onload=()=>resolve(String(reader.result||''))
+    reader.onerror=()=>reject(new Error('Não foi possível ler o arquivo.'))
+    reader.readAsDataURL(file)
+  })
+}
+
 function Logo({ compact = false }) {
   return <div className={`logo ${compact ? 'compact' : ''}`}>
     <span className="logo-mark"><Activity size={compact ? 18 : 22} strokeWidth={2.5}/></span>
