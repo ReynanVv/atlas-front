@@ -203,9 +203,9 @@ function InviteOnboarding({ inviteToken, onComplete }) {
     setBusy(true);setError('')
     try{
       const data=await apiRequest('/auth/login',{method:'POST',body:{email,password}})
-      if(data.user.role!=='student')throw new Error('Este convite precisa ser aceito por uma conta de aluno.')
       await apiRequest('/invitations/accept-token',{token:data.token,method:'POST',body:{token:inviteToken}})
-      setAuth(data)
+      const me=await apiRequest('/me',{token:data.token})
+      setAuth({token:data.token,user:me.user})
       setStage('availability')
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
