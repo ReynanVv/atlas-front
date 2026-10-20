@@ -362,7 +362,7 @@ function SideNav({ profile, page, setPage }) {
 
 function BottomNav({ profile, page, setPage }) {
   const student = [['home', Home, 'Início'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Chat']]
-  const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Biblioteca']]
+  const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Biblioteca'], ['messages', MessageCircle, 'Chat']]
   return <nav className="bottom-nav">{(profile === 'student' ? student : trainer).map(([key, Icon, label]) =>
     <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={20}/><span>{label}</span></button>
   )}</nav>
@@ -425,10 +425,11 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
 
     {currentWorkout ? <section className="today-card">
       <div className="today-main">
-        <div className="today-meta"><Badge tone={currentWorkout.status==='Realizado'?'green':currentWorkout.status==='Não Realizado'?'gray':'light'}>{currentWorkout.status}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span><span>{currentWorkout.intensity}</span><span><Clock3 size={14}/> {currentWorkout.estimatedMinutes||0} min</span></div>
+        <div className="today-meta"><Badge tone={currentWorkout.status==='Realizado'?'green':currentWorkout.status==='Não Realizado'?'gray':'light'}>{currentWorkout.status}</Badge><span><Dumbbell size={15}/> {currentWorkout.model}</span><span>{currentWorkout.intensity}</span><span><Clock3 size={14}/> {currentWorkout.estimatedMinutes||0} min</span>{currentWorkout.scheduledTime&&<span><Clock3 size={14}/> {currentWorkout.scheduledTime}</span>}</div>
         <h2>{currentWorkout.name}</h2>
         <p>{currentWorkout.description || currentWorkout.notes || 'Treino prescrito pelo seu professor.'}</p>
         <div className="coach-line"><Avatar initials={initialsOf(currentWorkout.trainerName)} size="sm" src={currentWorkout.trainerAvatarUrl}/><span>Prescrito por <strong>{currentWorkout.trainerName || 'Treinador'}</strong></span></div>
+        <div className="today-exercise-list">{(currentWorkout.exercises||[]).map((ex,idx)=><div key={ex.id||idx}><span>{idx+1}</span><div><strong>{ex.name}</strong><small>{ex.sets} séries · {ex.reps} reps · {Number(ex.suggestedWeight||0).toFixed(1)} kg · {ex.restSeconds}s descanso</small></div></div>)}</div>
         {currentWorkout.status!=='Realizado' && <button className="primary-btn" onClick={() => onOpenWorkout(currentWorkout.id)}><Play size={18} fill="currentColor"/> {currentWorkout.latestSession&&!currentWorkout.latestSession.completedAt ? 'Continuar treino' : 'Iniciar treino'}</button>}
       </div>
       <div className="today-visual">
@@ -449,7 +450,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
       <div className="compact-list">
         {workouts.length ? workouts.map((w,i) => <button className="compact-row upcoming-row workout-rich-row" key={w.id} onClick={()=>w.status!=='Realizado'&&onOpenWorkout(w.id)}>
           <div className="date-box"><strong>{String(i+1).padStart(2,'0')}</strong><small>{w.model}</small></div>
-          <div className="workout-list-main"><strong>{w.name}</strong><small className="workout-trainer-line"><Avatar initials={initialsOf(w.trainerName)} size="xs" src={w.trainerAvatarUrl}/>{w.trainerName}</small><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ')||'Sem dias'} · {w.intensity} · {w.estimatedMinutes||0} min</small></div>
+          <div className="workout-list-main"><strong>{w.name}</strong><small className="workout-trainer-line"><Avatar initials={initialsOf(w.trainerName)} size="xs" src={w.trainerAvatarUrl}/>{w.trainerName}</small><small>{(w.scheduledDays||[]).map(d=>names[d]).join(' · ')||'Sem dias'}{w.scheduledTime?` · ${w.scheduledTime}`:''} · {w.intensity} · {w.estimatedMinutes||0} min</small></div>
           <Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge><ChevronRight size={18}/>
         </button>) : <div className="empty-state">Nenhum treino prescrito ainda.</div>}
       </div>
