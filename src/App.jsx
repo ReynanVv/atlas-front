@@ -775,30 +775,61 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   </div>
 }
 
-function StudentDetail({ setPage, backend, studentId }) {
+function StudentDetail({ setPage, backend, studentId, token }) {
   const [tab,setTab]=useState('workouts')
+  const [progress,setProgress]=useState(null)
+  const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
   const student=(backend.students || []).find(st=>st.id===studentId)
   if(!student) return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button><section className="panel empty-state"><UsersRound size={34}/><h2>Aluno não encontrado</h2><p>Selecione um aluno vinculado na tela anterior.</p></section></div>
 
   const workouts=(backend.workouts || []).filter(w=>w.studentId===student.id)
   const completed=workouts.filter(w=>w.latestSession?.completedAt)
-  const initials=(student.name||'A').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()
+  const initials=initialsOf(student.name)
+
+  const loadProgress=async()=>{
+    if(progress)return
+    setBusy('progress');setError('')
+    try{setProgress(await apiRequest(`/trainer/students/${student.id}/progress`,{token}))}
+    catch(e){setError(e.message)}finally{setBusy('')}
+  }
+  useEffect(()=>{if(tab==='progress')loadProgress()},[tab,student.id])
+
+  const downloadReport=async()=>{
+    setBusy('report');setError('')
+    try{
+      const report=await apiRequest(`/trainer/students/${student.id}/report`,{token})
+      const rows=[['Data','Treino','Volume','Carga máxima','Séries','Observação']]
+      for(const item of report.sessions||[])rows.push([
+        new Date(item.completedAt).toLocaleDateString('pt-BR'),item.workoutName,
+        Math.round(Number(item.volume||0)),Number(item.maxWeight||0).toFixed(1),item.setCount||0,item.notes||''
+      ])
+      const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n')
+      const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a');a.href=url;a.download=`atlas-${student.name.toLowerCase().replace(/[^a-z0-9]+/gi,'-')}-relatorio.csv`;a.click()
+      URL.revokeObjectURL(url)
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const p=progress||{summary:{},sessions:[],exercises:[]}
+  const maxVolume=Math.max(1,...(p.sessions||[]).map(x=>Number(x.volume||0)))
 
   return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
-    <section className="student-profile-head"><Avatar initials={initials} size="lg"/><div><Badge>Aluno vinculado</Badge><h1>{student.name}</h1><p>{student.email}</p></div><div className="profile-actions"><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
-    <div className="stats-grid">
-      <StatCard icon={CalendarDays} label="Disponibilidade" value={student.availability?.length || 0} detail="dias por semana"/>
-      <StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="dados do backend"/>
-      <StatCard icon={Check} label="Treinos concluídos" value={completed.length} detail="sessões finalizadas"/>
-    </div>
+    {error&&<div className="app-error-banner">{error}</div>}
+    <section className="student-profile-head"><Avatar initials={initials} size="lg" src={student.avatarUrl}/><div><Badge>Aluno vinculado</Badge><h1>{student.name}</h1><p>{student.email}</p></div><div className="profile-actions"><button className="secondary-btn" disabled={busy==='report'} onClick={downloadReport}><Download size={17}/> {busy==='report'?'Gerando...':'Relatório CSV'}</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
+    <div className="stats-grid"><StatCard icon={CalendarDays} label="Disponibilidade" value={student.availability?.length||0} detail="dias por semana"/><StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="dados do backend"/><StatCard icon={Check} label="Treinos concluídos" value={completed.length} detail="sessões finalizadas"/></div>
+    <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
 
-    <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico de treinos</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
+    {tab==='workouts'&&<section className="panel no-pad"><div className="detail-workout-list">{workouts.length?workouts.map(w=><div className="detail-workout-row" key={w.id}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes||0} min · {(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ')||'Sem dias'}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state">Nenhum treino prescrito.</div>}</div></section>}
 
-    {tab==='workouts' && <section className="panel no-pad"><div className="detail-workout-list">{workouts.length?workouts.map(w=><div className="detail-workout-row" key={w.id}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>Modelo {w.model} · {(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || 'Sem dias'}</small></div><Badge tone={w.latestSession?.completedAt?'green':w.latestSession?'light':'gray'}>{w.latestSession?.completedAt?'Concluído':w.latestSession?'Em execução':'Prescrito'}</Badge></div>):<div className="empty-state">Nenhum treino prescrito para este aluno.</div>}</div></section>}
+    {tab==='history'&&<section className="panel no-pad"><div className="history-list">{workouts.filter(w=>w.latestSession).length?workouts.filter(w=>w.latestSession).map(w=><div className="history-row detail-history" key={w.id}><div className="history-date">{new Date(w.latestSession.completedAt||w.latestSession.startedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase()}</div><div className="history-main"><strong>{w.name}</strong><small>{w.model}</small></div><Badge tone={w.latestSession.completedAt?'green':'light'}>{w.latestSession.completedAt?'Realizado':'Em andamento'}</Badge></div>):<div className="empty-state">Nenhuma sessão registrada.</div>}</div></section>}
 
-    {tab==='history' && <section className="panel no-pad"><div className="history-list">{workouts.filter(w=>w.latestSession).length?workouts.filter(w=>w.latestSession).map(w=><div className="history-row detail-history" key={w.id}><div className="history-date">{new Date(w.latestSession.completedAt||w.latestSession.startedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase()}</div><div className="history-main"><strong>{w.name}</strong><small>{w.model}</small></div><Badge tone={w.latestSession.completedAt?'green':'light'}>{w.latestSession.completedAt?'Realizado':'Em andamento'}</Badge></div>):<div className="empty-state">Nenhuma sessão registrada para este aluno.</div>}</div></section>}
-
-    {tab==='progress' && <section className="panel empty-state"><LineChart size={32}/><h3>Evolução sem dados agregados</h3><p>O backend ainda não possui endpoint de evolução por carga/volume para este aluno. Nenhum gráfico fictício é exibido.</p></section>}
+    {tab==='progress'&&<section className="page-stack nested-stack">{busy==='progress'&&!progress?<section className="panel empty-state">Carregando evolução...</section>:<>
+      <div className="stats-grid"><StatCard icon={Trophy} label="Concluídos" value={p.summary?.completedWorkouts||0}/><StatCard icon={Activity} label="Volume total" value={Math.round(Number(p.summary?.totalVolume||0)).toLocaleString('pt-BR')}/><StatCard icon={Dumbbell} label="Carga máxima" value={`${Number(p.summary?.maxWeight||0).toFixed(1)} kg`}/></div>
+      <section className="panel"><div className="panel-head"><div><h3>Volume por treino</h3><p>Frequência e carga registradas.</p></div><LineChart size={20}/></div>{p.sessions?.length?<div className="progress-bars">{p.sessions.slice(-12).map(x=><div className="progress-bar-row" key={x.id}><span>{new Date(x.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(x.volume||0)/maxVolume*100)}%`}}></i></div><strong>{Math.round(Number(x.volume||0))}</strong></div>)}</div>:<div className="empty-state compact-empty">Sem dados de treino concluído.</div>}</section>
+      <section className="panel"><div className="panel-head"><div><h3>Cargas por exercício</h3><p>Melhores marcas do aluno.</p></div><Dumbbell size={20}/></div>{p.exercises?.length?<div className="progress-exercise-list">{p.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} sessão(ões)</small></div>)}</div>:<div className="empty-state compact-empty">Sem séries registradas.</div>}</section>
+    </>}</section>}
   </div>
 }
 
