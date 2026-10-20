@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
-  UserPlus, UserRound, UsersRound, Video, X, Zap
+  Upload, Download, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
 
 
@@ -69,81 +69,77 @@ function StatCard({ icon: Icon, label, value, detail }) {
 
 function Login({ onEnter }) {
   const [mode, setMode] = useState('welcome')
+  const [name,setName]=useState('')
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
+  const [registerRole,setRegisterRole]=useState('trainer')
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
 
   const loginReal = async () => {
-    setBusy('login')
-    setError('')
+    setBusy('login');setError('')
     try {
       const data = await apiRequest('/auth/login', { method: 'POST', body: { email, password } })
       onEnter(data.token, data.user)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setBusy('')
-    }
+    } catch (e) { setError(e.message) } finally { setBusy('') }
+  }
+
+  const register = async () => {
+    setBusy('register');setError('')
+    try {
+      const data = await apiRequest('/auth/register', { method:'POST', body:{name,email,password,role:registerRole} })
+      onEnter(data.token,data.user)
+    } catch(e) { setError(e.message) } finally { setBusy('') }
   }
 
   const enterAs = async role => {
-    setBusy(role)
-    setError('')
+    setBusy(role);setError('')
     try {
       const data = await apiRequest('/auth/demo-login', { method: 'POST', body: { role } })
       onEnter(data.token, data.user)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setBusy('')
-    }
+    } catch (e) { setError(e.message) } finally { setBusy('') }
   }
 
   return <div className="auth-screen">
-    <div className="auth-decor auth-decor-left"></div>
-    <div className="auth-decor auth-decor-right"></div>
-
+    <div className="auth-decor auth-decor-left"></div><div className="auth-decor auth-decor-right"></div>
     <div className="auth-content">
-      <div className="auth-top">
-        <div className="auth-logo"><Logo/></div>
-        <div className="auth-dots"><span className="active"></span><span></span><span></span></div>
-      </div>
+      <div className="auth-top"><div className="auth-logo"><Logo/></div><div className="auth-dots"><span className="active"></span><span></span><span></span></div></div>
+      <section className="auth-hero"><span className="auth-kicker">TREINE. ACOMPANHE. EVOLUA.</span><h1>Sustente sua força.<br/><em>Supere seus limites.</em></h1><p>Treinos, evolução e contato com seu treinador em uma experiência direta e feita para manter sua constância.</p></section>
 
-      <section className="auth-hero">
-        <span className="auth-kicker">TREINE. ACOMPANHE. EVOLUA.</span>
-        <h1>Sustente sua força.<br/><em>Supere seus limites.</em></h1>
-        <p>Treinos, evolução e contato com seu treinador em uma experiência direta e feita para manter sua constância.</p>
-      </section>
-
-      {mode === 'welcome' && <section className="auth-card">
-        <button className="auth-primary" onClick={() => {setError('');setMode('login')}}>Entrar</button>
-        <button className="auth-outline auth-submit" onClick={() => {setError('');setMode('demo')}}>Acessos de teste</button>
+      {mode==='welcome'&&<section className="auth-card">
+        <button className="auth-primary" onClick={()=>{setError('');setMode('login')}}>Entrar</button>
+        <button className="auth-outline auth-submit" onClick={()=>{setError('');setMode('register')}}>Criar conta</button>
+        <button className="auth-outline auth-submit" onClick={()=>{setError('');setMode('demo')}}>Acessos de teste</button>
         <small className="auth-brandline">Atlas · treino conectado</small>
       </section>}
 
-      {mode === 'login' && <section className="auth-card auth-form-card">
-        <button className="auth-back" onClick={() => {setError('');setMode('welcome')}}><ArrowLeft size={17}/> Voltar</button>
-        <span className="eyebrow">Acessar sua conta</span>
-        <h2>Entrar no Atlas</h2>
-        <p>Use o e-mail e a senha cadastrados na sua conta.</p>
-        {error && <div className="auth-error">{error}</div>}
-        <label className="field-label">E-mail</label>
-        <div className="input-wrap"><Mail size={18}/><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></div>
-        <label className="field-label">Senha</label>
-        <div className="input-wrap"><Lock size={18}/><input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha" onKeyDown={e=>{if(e.key==='Enter'&&email&&password&&!busy)loginReal()}}/></div>
+      {mode==='login'&&<section className="auth-card auth-form-card">
+        <button className="auth-back" onClick={()=>{setError('');setMode('welcome')}}><ArrowLeft size={17}/> Voltar</button>
+        <span className="eyebrow">Acessar sua conta</span><h2>Entrar no Atlas</h2><p>Use o e-mail e a senha cadastrados.</p>
+        {error&&<div className="auth-error">{error}</div>}
+        <label className="field-label">E-mail</label><div className="input-wrap"><Mail size={18}/><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></div>
+        <label className="field-label">Senha</label><div className="input-wrap"><Lock size={18}/><input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha" onKeyDown={e=>{if(e.key==='Enter'&&email&&password&&!busy)loginReal()}}/></div>
         <button className="auth-primary auth-submit" disabled={!email||!password||!!busy} onClick={loginReal}>{busy==='login'?'Entrando...':'Entrar'} <LogIn size={18}/></button>
-        <small className="auth-brandline">Contas de aluno podem ser criadas através do link de convite do treinador.</small>
       </section>}
 
-      {mode === 'demo' && <section className="auth-card auth-form-card">
-        <button className="auth-back" onClick={() => {setError('');setMode('welcome')}}><ArrowLeft size={17}/> Voltar</button>
-        <span className="eyebrow">Ambiente de teste</span>
-        <h2>Escolha o perfil</h2>
-        <p>Use os usuários de teste apenas para validar rapidamente o fluxo.</p>
-        {error && <div className="auth-error">{error}</div>}
-        <button className="auth-primary auth-submit" disabled={!!busy} onClick={() => enterAs('trainer')}><UsersRound size={18}/> {busy === 'trainer' ? 'Entrando...' : 'Professor Atlas'}</button>
-        <button className="auth-outline auth-submit" disabled={!!busy} onClick={() => enterAs('student')}><UserRound size={18}/> {busy === 'student' ? 'Entrando...' : 'Aluno Atlas'}</button>
+      {mode==='register'&&<section className="auth-card auth-form-card">
+        <button className="auth-back" onClick={()=>{setError('');setMode('welcome')}}><ArrowLeft size={17}/> Voltar</button>
+        <span className="eyebrow">Nova conta</span><h2>Criar conta</h2><p>Você poderá ativar o segundo perfil depois, na área do usuário.</p>
+        {error&&<div className="auth-error">{error}</div>}
+        <label className="field-label">Nome</label><div className="input-wrap"><UserRound size={18}/><input value={name} onChange={e=>setName(e.target.value)} placeholder="Seu nome"/></div>
+        <label className="field-label">E-mail</label><div className="input-wrap"><Mail size={18}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></div>
+        <label className="field-label">Senha</label><div className="input-wrap"><Lock size={18}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo de 8 caracteres"/></div>
+        <label className="field-label">Perfil inicial</label>
+        <div className="profile-register-choice"><button className={registerRole==='trainer'?'active':''} onClick={()=>setRegisterRole('trainer')}><UsersRound size={18}/> Treinador</button><button className={registerRole==='student'?'active':''} onClick={()=>setRegisterRole('student')}><UserRound size={18}/> Aluno</button></div>
+        <button className="auth-primary auth-submit" disabled={!name||!email||password.length<8||!!busy} onClick={register}>{busy==='register'?'Criando...':'Criar conta'} <ChevronRight size={18}/></button>
+      </section>}
+
+      {mode==='demo'&&<section className="auth-card auth-form-card">
+        <button className="auth-back" onClick={()=>{setError('');setMode('welcome')}}><ArrowLeft size={17}/> Voltar</button>
+        <span className="eyebrow">Ambiente de teste</span><h2>Escolha o perfil</h2><p>Use os usuários de teste apenas para validar rapidamente o fluxo.</p>
+        {error&&<div className="auth-error">{error}</div>}
+        <button className="auth-primary auth-submit" disabled={!!busy} onClick={()=>enterAs('trainer')}><UsersRound size={18}/> {busy==='trainer'?'Entrando...':'Professor Atlas'}</button>
+        <button className="auth-outline auth-submit" disabled={!!busy} onClick={()=>enterAs('student')}><UserRound size={18}/> {busy==='student'?'Entrando...':'Aluno Atlas'}</button>
       </section>}
     </div>
   </div>
@@ -266,16 +262,64 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   </div>
 }
 
-function Topbar({ profile, user, onLogout }) {
+function Topbar({ profile, user, token, onUserChange, onLogout }) {
+  const [profileOpen,setProfileOpen]=useState(false)
+  const [notificationsOpen,setNotificationsOpen]=useState(false)
+  const [notifications,setNotifications]=useState([])
+  const [busy,setBusy]=useState('')
+
+  const loadNotifications=async()=>{
+    try{setNotifications(await apiRequest('/notifications',{token}))}catch{}
+  }
+  useEffect(()=>{loadNotifications()},[token,profile])
+
+  const switchProfile=async(next)=>{
+    if(next===profile){setProfileOpen(false);return}
+    setBusy('profile')
+    try{
+      const data=await apiRequest('/profiles/active',{token,method:'PUT',body:{profile:next}})
+      onUserChange(data.user)
+      setProfileOpen(false)
+    }finally{setBusy('')}
+  }
+
+  const addProfile=async(next)=>{
+    setBusy('profile')
+    try{
+      await apiRequest('/profiles',{token,method:'POST',body:{profile:next}})
+      const data=await apiRequest('/profiles/active',{token,method:'PUT',body:{profile:next}})
+      onUserChange(data.user)
+      setProfileOpen(false)
+    }finally{setBusy('')}
+  }
+
+  const unread=notifications.filter(n=>!n.readAt).length
+  const profiles=user?.profiles || [profile]
+  const other=profile==='trainer'?'student':'trainer'
+
   return <header className="topbar">
     <Logo/>
     <div className="topbar-actions">
-      <button className="icon-btn"><Bell size={19}/><span className="notification-dot"></span></button>
-      <div className="profile-switch">
-        <div className="profile-trigger static-profile">
-          <Avatar initials={initialsOf(user?.name)} size="sm"/>
-          <span><small>{profile === 'student' ? 'Aluno' : 'Treinador'}</small><strong>{user?.name}</strong></span>
-        </div>
+      <div className="topbar-popover-wrap">
+        <button className="bell-action" onClick={()=>{setNotificationsOpen(v=>!v);setProfileOpen(false);loadNotifications()}}><Bell size={19}/>{unread>0&&<span className="notification-count">{unread>9?'9+':unread}</span>}</button>
+        {notificationsOpen&&<div className="topbar-popover notification-popover">
+          <div className="popover-head"><strong>Notificações</strong><button onClick={async()=>{await apiRequest('/notifications/read-all',{token,method:'POST'});await loadNotifications()}}>Marcar lidas</button></div>
+          <div className="notification-list">{notifications.length?notifications.slice(0,12).map(n=><button key={n.id} className={n.readAt?'':'unread'} onClick={async()=>{if(!n.readAt)await apiRequest(`/notifications/${n.id}/read`,{token,method:'POST'});await loadNotifications()}}><strong>{n.title}</strong><span>{n.body}</span><small>{new Date(n.createdAt).toLocaleString('pt-BR')}</small></button>):<div className="empty-popover">Nenhuma notificação.</div>}</div>
+        </div>}
+      </div>
+
+      <div className="profile-switch topbar-popover-wrap">
+        <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false)}}>
+          <Avatar initials={initialsOf(user?.name)} size="sm"/><span><small>{profile==='student'?'Aluno':'Treinador'}</small><strong>{user?.name}</strong></span><ChevronDown size={15}/>
+        </button>
+        {profileOpen&&<div className="topbar-popover profile-popover">
+          <strong>{user?.name}</strong><small>{user?.email}</small>
+          <div className="profile-options">
+            {profiles.includes('trainer')&&<button className={profile==='trainer'?'active':''} disabled={!!busy} onClick={()=>switchProfile('trainer')}><UsersRound size={16}/> Treinador</button>}
+            {profiles.includes('student')&&<button className={profile==='student'?'active':''} disabled={!!busy} onClick={()=>switchProfile('student')}><UserRound size={16}/> Aluno</button>}
+            {!profiles.includes(other)&&<button disabled={!!busy} onClick={()=>addProfile(other)}><CirclePlus size={16}/> Ativar perfil {other==='trainer'?'Treinador':'Aluno'}</button>}
+          </div>
+        </div>}
         <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
     </div>
