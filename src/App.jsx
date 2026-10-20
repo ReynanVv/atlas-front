@@ -363,7 +363,7 @@ function SideNav({ profile, page, setPage }) {
 function BottomNav({ profile, page, setPage }) {
   const student = [['home', Home, 'Início'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Chat']]
   const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Biblioteca'], ['messages', MessageCircle, 'Chat']]
-  return <nav className="bottom-nav">{(profile === 'student' ? student : trainer).map(([key, Icon, label]) =>
+  return <nav className={`bottom-nav bottom-nav-${profile}`}>{(profile === 'student' ? student : trainer).map(([key, Icon, label]) =>
     <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={20}/><span>{label}</span></button>
   )}</nav>
 }
