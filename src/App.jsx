@@ -713,6 +713,26 @@ function TrainerDashboard({ setPage, user, backend, onOpenStudent }) {
   const completed=workouts.filter(w=>w.status==='Realizado' || w.latestSession?.completedAt)
   const inProgress=workouts.filter(w=>w.latestSession && !w.latestSession.completedAt)
   const progressById=new Map((dashboard.students||[]).map(st=>[st.id,st]))
+  const now=new Date()
+  const periodStart=(()=>{
+    const start=new Date(now)
+    if(period==='Dia'){start.setHours(0,0,0,0);return start}
+    if(period==='Semana'){
+      start.setHours(0,0,0,0)
+      const mondayOffset=(start.getDay()+6)%7
+      start.setDate(start.getDate()-mondayOffset)
+      return start
+    }
+    if(period==='Mês'){return new Date(now.getFullYear(),now.getMonth(),1)}
+    return new Date(now.getFullYear(),0,1)
+  })()
+  const activities=workouts
+    .filter(w=>{
+      const value=w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt
+      return value&&new Date(value)>=periodStart
+    })
+    .sort((a,b)=>new Date(b.latestSession?.completedAt||b.latestSession?.startedAt||b.createdAt)-new Date(a.latestSession?.completedAt||a.latestSession?.startedAt||a.createdAt))
+    .slice(0,6)
 
   return <div className="page-stack"><section className="welcome-row">
     <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
@@ -729,7 +749,7 @@ function TrainerDashboard({ setPage, user, backend, onOpenStudent }) {
   <div className="grid-2 dashboard-grid">
     <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições registradas.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
       <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
-      <div className="activity-list">{workouts.length?workouts.slice(0,6).map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name} · {w.intensity} · {w.estimatedMinutes||0} min</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade registrada ainda.</div>}</div>
+      <div className="activity-list">{activities.length?activities.map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name} · {new Date(w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt).toLocaleDateString('pt-BR')} · {w.model}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade neste período.</div>}</div>
     </section>
 
     <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alunos sem treino recente ou sem prescrição.</p></div><Bell size={19}/></div>
