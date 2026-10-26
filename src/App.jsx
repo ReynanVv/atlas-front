@@ -650,6 +650,8 @@ function StudentProgress({ backend }) {
   const summary=progress.summary || {}
   const sessions=progress.sessions || []
   const maxVolume=Math.max(1,...sessions.map(s=>Number(s.volume||0)))
+  const maxSessionWeight=Math.max(1,...sessions.map(s=>Number(s.maxWeight||0)))
+  const annotations=progress.annotations || []
   return <div className="page-stack"><section className="page-heading"><span className="eyebrow">Evolução</span><h1>Seu progresso em números</h1><p>Carga máxima, volume e frequência calculados a partir das séries registradas.</p></section>
     <div className="stats-grid">
       <StatCard icon={Trophy} label="Treinos concluídos" value={summary.completedWorkouts||0} detail="total"/>
@@ -658,7 +660,9 @@ function StudentProgress({ backend }) {
       <StatCard icon={Activity} label="Volume total" value={Math.round(Number(summary.totalVolume||0)).toLocaleString('pt-BR')} detail="kg × repetições"/>
     </div>
     <section className="panel"><div className="panel-head"><div><h3>Volume por treino</h3><p>Volume real de cada sessão concluída.</p></div><LineChart size={20}/></div>{sessions.length?<div className="progress-bars">{sessions.slice(-12).map(s=><div className="progress-bar-row" key={s.id}><span>{new Date(s.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(s.volume||0)/maxVolume*100)}%`}}></i></div><strong>{Math.round(Number(s.volume||0)).toLocaleString('pt-BR')}</strong></div>)}</div>:<div className="empty-state compact-empty">Conclua treinos e registre séries para gerar o gráfico.</div>}</section>
+    <section className="panel"><div className="panel-head"><div><h3>Carga máxima ao longo do tempo</h3><p>Maior carga registrada em cada treino concluído.</p></div><Dumbbell size={20}/></div>{sessions.length?<div className="progress-bars max-load-bars">{sessions.slice(-12).map(s=><div className="progress-bar-row" key={'load-'+s.id}><span>{new Date(s.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(s.maxWeight||0)/maxSessionWeight*100)}%`}}></i></div><strong>{Number(s.maxWeight||0).toFixed(1)} kg</strong></div>)}</div>:<div className="empty-state compact-empty">Ainda não há carga registrada.</div>}</section>
     <section className="panel"><div className="panel-head"><div><h3>Melhores cargas por exercício</h3><p>Baseado nas séries concluídas.</p></div><Dumbbell size={20}/></div>{progress.exercises?.length?<div className="progress-exercise-list">{progress.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} treino(s) · volume {Math.round(Number(ex.volume||0)).toLocaleString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Ainda não há dados de carga.</div>}</section>
+    <section className="panel"><div className="panel-head"><div><h3>Minhas observações</h3><p>Anotações registradas durante as séries.</p></div><MessageCircle size={20}/></div>{annotations.length?<div className="training-notes-list">{annotations.slice(0,20).map(note=><div key={note.id}><strong>{note.exerciseName} · série {note.setNumber}</strong><span>{note.notes}</span><small>{note.workoutName} · {new Date(note.completedAt).toLocaleDateString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Nenhuma observação registrada nas séries.</div>}</section>
   </div>
 }
 
@@ -878,6 +882,8 @@ function StudentDetail({ setPage, backend, studentId, token }) {
 
   const p=progress||{summary:{},sessions:[],exercises:[]}
   const maxVolume=Math.max(1,...(p.sessions||[]).map(x=>Number(x.volume||0)))
+  const maxSessionWeight=Math.max(1,...(p.sessions||[]).map(x=>Number(x.maxWeight||0)))
+  const annotations=p.annotations || []
 
   return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
     {error&&<div className="app-error-banner">{error}</div>}
@@ -892,7 +898,9 @@ function StudentDetail({ setPage, backend, studentId, token }) {
     {tab==='progress'&&<section className="page-stack nested-stack">{busy==='progress'&&!progress?<section className="panel empty-state">Carregando evolução...</section>:<>
       <div className="stats-grid"><StatCard icon={Trophy} label="Concluídos" value={p.summary?.completedWorkouts||0}/><StatCard icon={Activity} label="Volume total" value={Math.round(Number(p.summary?.totalVolume||0)).toLocaleString('pt-BR')}/><StatCard icon={Dumbbell} label="Carga máxima" value={`${Number(p.summary?.maxWeight||0).toFixed(1)} kg`}/></div>
       <section className="panel"><div className="panel-head"><div><h3>Volume por treino</h3><p>Frequência e carga registradas.</p></div><LineChart size={20}/></div>{p.sessions?.length?<div className="progress-bars">{p.sessions.slice(-12).map(x=><div className="progress-bar-row" key={x.id}><span>{new Date(x.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(x.volume||0)/maxVolume*100)}%`}}></i></div><strong>{Math.round(Number(x.volume||0))}</strong></div>)}</div>:<div className="empty-state compact-empty">Sem dados de treino concluído.</div>}</section>
+      <section className="panel"><div className="panel-head"><div><h3>Carga máxima ao longo do tempo</h3><p>Maior carga por sessão concluída.</p></div><Dumbbell size={20}/></div>{p.sessions?.length?<div className="progress-bars max-load-bars">{p.sessions.slice(-12).map(x=><div className="progress-bar-row" key={'trainer-load-'+x.id}><span>{new Date(x.completedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span><div><i style={{width:`${Math.max(4,Number(x.maxWeight||0)/maxSessionWeight*100)}%`}}></i></div><strong>{Number(x.maxWeight||0).toFixed(1)} kg</strong></div>)}</div>:<div className="empty-state compact-empty">Sem dados de carga.</div>}</section>
       <section className="panel"><div className="panel-head"><div><h3>Cargas por exercício</h3><p>Melhores marcas do aluno.</p></div><Dumbbell size={20}/></div>{p.exercises?.length?<div className="progress-exercise-list">{p.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} sessão(ões)</small></div>)}</div>:<div className="empty-state compact-empty">Sem séries registradas.</div>}</section>
+      <section className="panel"><div className="panel-head"><div><h3>Anotações do aluno</h3><p>Comentários salvos nas séries executadas.</p></div><MessageCircle size={20}/></div>{annotations.length?<div className="training-notes-list">{annotations.slice(0,30).map(note=><div key={note.id}><strong>{note.exerciseName} · série {note.setNumber}</strong><span>{note.notes}</span><small>{note.workoutName} · {new Date(note.completedAt).toLocaleDateString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Nenhuma anotação registrada.</div>}</section>
     </>}</section>}
   </div>
 }
