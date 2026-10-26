@@ -1164,3 +1164,79 @@ button{color:inherit}
 .profile-photo-edit label{display:inline-flex;align-items:center;gap:7px;min-height:38px;border:1px solid #D8DDE4;border-radius:10px;padding:0 11px;font-size:10px;font-weight:800;cursor:pointer}
 .profile-photo-edit input{display:none}
 .popover-error{background:#FFE7E4;color:#8B302B;border:1px solid #F3C9C5;border-radius:10px;padding:8px 9px;font-size:9px;font-weight:700}
+
+
+/* Requirement gap fixes */
+.workout-filters select{
+  min-height:42px;
+  border:1px solid #D8DDE4;
+  border-radius:10px;
+  background:#fff;
+  color:#0B1B3A;
+  padding:0 12px;
+  font:inherit;
+  font-weight:700;
+}
+.training-notes-list{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.training-notes-list>div{
+  display:grid;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid #E6E9ED;
+  border-radius:11px;
+  background:#F8F9FA;
+}
+.training-notes-list strong{font-size:11px;color:#0B1B3A}
+.training-notes-list span{font-size:10px;color:#353E43;white-space:pre-wrap}
+.training-notes-list small{font-size:9px;color:#7B858E}
+.max-load-bars .progress-bar-row i{background:#0B1B3A}
+
+.detail-workout-row .export-workout-btn{
+  justify-self:end;
+  white-space:nowrap;
+}
+.copy-workout-modal{
+  width:min(520px,calc(100vw - 28px));
+}
+.copy-workout-modal>select{
+  width:100%;
+  min-height:46px;
+  border:1px solid #D8DDE4;
+  border-radius:11px;
+  padding:0 12px;
+  background:#fff;
+  color:#0B1B3A;
+  margin:6px 0 14px;
+}
+.copy-days-picker{margin:8px 0 10px}
+
+@media(max-width:900px){
+  .workout-filters{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .workout-filters .search-box{
+    grid-column:1/-1;
+  }
+}
+@media(max-width:680px){
+  .workout-filters{
+    grid-template-columns:1fr;
+  }
+  .workout-filters .search-box{
+    grid-column:auto;
+  }
+  .detail-workout-row{
+    grid-template-columns:auto minmax(0,1fr) auto;
+  }
+  .detail-workout-row .export-workout-btn{
+    grid-column:2/-1;
+    justify-self:stretch;
+    justify-content:center;
+  }
+}
