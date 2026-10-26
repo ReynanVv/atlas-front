@@ -986,6 +986,8 @@ function ExerciseLibrary({ setPage, token }) {
 function Workouts({ setPage, token, backend, onOpenBuilder }) {
   const [query,setQuery]=useState('')
   const [tab,setTab]=useState('workouts')
+  const [modelFilter,setModelFilter]=useState('')
+  const [statusFilter,setStatusFilter]=useState('')
   const [templates,setTemplates]=useState([])
   const [error,setError]=useState('')
   const [busy,setBusy]=useState('')
@@ -1001,9 +1003,15 @@ function Workouts({ setPage, token, backend, onOpenBuilder }) {
     id:w.id,name:w.name,student:w.studentName || 'Aluno não identificado',
     routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
     model:w.model,intensity:w.intensity || 'Moderada',estimatedMinutes:w.estimatedMinutes || 0,
-    status:w.status || (w.latestSession?.completedAt?'Realizado':w.latestSession?'Pendente':'Pendente')
+    status:w.status || (w.latestSession?.completedAt?'Realizado':w.latestSession?'Pendente':'Pendente'),
+    dueState:(w.status==='Realizado'||w.latestSession?.completedAt)?'Realizado':w.status==='Não Realizado'?'Vencido':'A vencer'
   }))
-  const filtered=rows.filter(w=>(w.name+' '+w.student+' '+w.model+' '+w.status).toLowerCase().includes(query.toLowerCase()))
+  const filtered=rows.filter(w=>{
+    const matchesQuery=(w.name+' '+w.student+' '+w.model+' '+w.status+' '+w.dueState).toLowerCase().includes(query.toLowerCase())
+    const matchesModel=!modelFilter||w.model===modelFilter
+    const matchesStatus=!statusFilter||w.dueState===statusFilter
+    return matchesQuery&&matchesModel&&matchesStatus
+  })
   const toneFor=status=>status==='Realizado'?'green':status==='Não Realizado'?'gray':'light'
 
   const removeTemplate=async(id)=>{
@@ -1018,7 +1026,11 @@ function Workouts({ setPage, token, backend, onOpenBuilder }) {
     <div className="tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos prescritos</button><button className={tab==='templates'?'active':''} onClick={()=>setTab('templates')}>Templates</button></div>
 
     {tab==='workouts'?<>
-      <div className="toolbar workout-filters"><div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino, aluno, modelo ou status"/></div></div>
+      <div className="toolbar workout-filters">
+        <div className="search-box grow"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por treino ou aluno"/></div>
+        <select value={modelFilter} onChange={e=>setModelFilter(e.target.value)}><option value="">Todos os modelos</option><option>AB</option><option>ABC</option><option>FULLBODY</option></select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">Todas as situações</option><option>A vencer</option><option>Vencido</option><option>Realizado</option></select>
+      </div>
       <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
       {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes?(w.estimatedMinutes+' min'):'tempo não informado'}</small></div></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
       {!filtered.length&&<div className="empty-state">Nenhum treino prescrito ainda.</div>}</div></section>
