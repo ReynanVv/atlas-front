@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 
 
-const API_URL = 'https://controlfinance-app.onrender.com/atlas-api'
+const API_URL = 'https://atlas-api-vkr4.onrender.com/atlas-api'
 
 const SESSION_STORAGE_KEY = 'atlas.auth.token'
 
