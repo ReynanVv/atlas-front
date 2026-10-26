@@ -843,11 +843,14 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   </div>
 }
 
-function StudentDetail({ setPage, backend, studentId, token }) {
+function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
   const [tab,setTab]=useState('workouts')
   const [progress,setProgress]=useState(null)
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
+  const [copyWorkout,setCopyWorkout]=useState(null)
+  const [copyStudentId,setCopyStudentId]=useState('')
+  const [copyDays,setCopyDays]=useState([])
   const student=(backend.students || []).find(st=>st.id===studentId)
   if(!student) return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button><section className="panel empty-state"><UsersRound size={34}/><h2>Aluno não encontrado</h2><p>Selecione um aluno vinculado na tela anterior.</p></section></div>
 
@@ -880,6 +883,44 @@ function StudentDetail({ setPage, backend, studentId, token }) {
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
+  const copyTargets=(backend.students||[]).filter(st=>st.id!==student.id).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+  const copyTarget=copyTargets.find(st=>st.id===copyStudentId)||null
+  const dayLabels=['D','S','T','Q','Q','S','S']
+  const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+
+  const openCopyWorkout=workout=>{
+    const firstTarget=copyTargets[0]||null
+    setCopyWorkout(workout)
+    setCopyStudentId(firstTarget?.id||'')
+    const allowed=firstTarget?.availability||[]
+    const preferred=(workout.scheduledDays||[]).filter(day=>allowed.includes(day))
+    setCopyDays(preferred.length?preferred:(allowed[0]!=null?[allowed[0]]:[]))
+    setError('')
+  }
+
+  const chooseCopyTarget=id=>{
+    const target=copyTargets.find(st=>st.id===id)||null
+    setCopyStudentId(id)
+    const allowed=target?.availability||[]
+    const preferred=(copyWorkout?.scheduledDays||[]).filter(day=>allowed.includes(day))
+    setCopyDays(preferred.length?preferred:(allowed[0]!=null?[allowed[0]]:[]))
+  }
+
+  const toggleCopyDay=day=>{
+    if(!copyTarget?.availability?.includes(day))return
+    setCopyDays(days=>days.includes(day)?days.filter(x=>x!==day):[...days,day].sort((a,b)=>a-b))
+  }
+
+  const confirmCopyWorkout=async()=>{
+    if(!copyWorkout||!copyStudentId||!copyDays.length)return
+    setBusy('copy');setError('')
+    try{
+      await apiRequest('/workouts/'+copyWorkout.id+'/copy',{token,method:'POST',body:{studentId:copyStudentId,scheduledDays:copyDays}})
+      await refreshBackend()
+      setCopyWorkout(null);setCopyStudentId('');setCopyDays([])
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
   const p=progress||{summary:{},sessions:[],exercises:[]}
   const maxVolume=Math.max(1,...(p.sessions||[]).map(x=>Number(x.volume||0)))
   const maxSessionWeight=Math.max(1,...(p.sessions||[]).map(x=>Number(x.maxWeight||0)))
@@ -891,7 +932,7 @@ function StudentDetail({ setPage, backend, studentId, token }) {
     <div className="stats-grid"><StatCard icon={CalendarDays} label="Disponibilidade" value={student.availability?.length||0} detail="dias por semana"/><StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="dados do backend"/><StatCard icon={Check} label="Treinos concluídos" value={completed.length} detail="sessões finalizadas"/></div>
     <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
 
-    {tab==='workouts'&&<section className="panel no-pad"><div className="detail-workout-list">{workouts.length?workouts.map(w=><div className="detail-workout-row" key={w.id}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes||0} min · {(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ')||'Sem dias'}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state">Nenhum treino prescrito.</div>}</div></section>}
+    {tab==='workouts'&&<section className="panel no-pad"><div className="detail-workout-list">{workouts.length?workouts.map(w=><div className="detail-workout-row" key={w.id}><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.intensity} · {w.estimatedMinutes||0} min · {(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ')||'Sem dias'}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge><button className="secondary-btn compact export-workout-btn" disabled={!copyTargets.length} onClick={()=>openCopyWorkout(w)}><Share2 size={15}/> Exportar</button></div>):<div className="empty-state">Nenhum treino prescrito.</div>}</div></section>}
 
     {tab==='history'&&<section className="panel no-pad"><div className="history-list">{workouts.filter(w=>w.latestSession).length?workouts.filter(w=>w.latestSession).map(w=><div className="history-row detail-history" key={w.id}><div className="history-date">{new Date(w.latestSession.completedAt||w.latestSession.startedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).toUpperCase()}</div><div className="history-main"><strong>{w.name}</strong><small>{w.model}</small></div><Badge tone={w.latestSession.completedAt?'green':'light'}>{w.latestSession.completedAt?'Realizado':'Em andamento'}</Badge></div>):<div className="empty-state">Nenhuma sessão registrada.</div>}</div></section>}
 
@@ -902,6 +943,17 @@ function StudentDetail({ setPage, backend, studentId, token }) {
       <section className="panel"><div className="panel-head"><div><h3>Cargas por exercício</h3><p>Melhores marcas do aluno.</p></div><Dumbbell size={20}/></div>{p.exercises?.length?<div className="progress-exercise-list">{p.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} sessão(ões)</small></div>)}</div>:<div className="empty-state compact-empty">Sem séries registradas.</div>}</section>
       <section className="panel"><div className="panel-head"><div><h3>Anotações do aluno</h3><p>Comentários salvos nas séries executadas.</p></div><MessageCircle size={20}/></div>{annotations.length?<div className="training-notes-list">{annotations.slice(0,30).map(note=><div key={note.id}><strong>{note.exerciseName} · série {note.setNumber}</strong><span>{note.notes}</span><small>{note.workoutName} · {new Date(note.completedAt).toLocaleDateString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Nenhuma anotação registrada.</div>}</section>
     </>}</section>}
+
+    {copyWorkout&&<div className="modal-backdrop" onClick={()=>setCopyWorkout(null)}><div className="standard-modal copy-workout-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" onClick={()=>setCopyWorkout(null)}><X size={18}/></button>
+      <div className="modal-icon"><Share2 size={22}/></div><h2>Exportar treino</h2>
+      <p>Copiar <strong>{copyWorkout.name}</strong> de {student.name} para outro aluno vinculado.</p>
+      <label className="field-label">Aluno de destino</label>
+      <select value={copyStudentId} onChange={e=>chooseCopyTarget(e.target.value)}><option value="">Selecione</option>{copyTargets.map(target=><option key={target.id} value={target.id}>{target.name}</option>)}</select>
+      {copyTarget&&<><label className="field-label">Dias para o aluno de destino</label><div className="weekday-picker copy-days-picker">{dayLabels.map((label,day)=><button type="button" key={day} disabled={!copyTarget.availability?.includes(day)} className={copyDays.includes(day)?'active':''} onClick={()=>toggleCopyDay(day)}>{label}</button>)}</div><div className="availability-summary"><strong>{copyDays.length} dia(s) selecionado(s)</strong><span>{copyDays.map(day=>dayNames[day]).join(' · ')||'Selecione os dias'}</span></div></>}
+      {!copyTargets.length&&<div className="app-error-banner">Você precisa ter outro aluno vinculado para exportar este treino.</div>}
+      <button className="primary-btn full" disabled={busy==='copy'||!copyStudentId||!copyDays.length} onClick={confirmCopyWorkout}>{busy==='copy'?'Exportando...':'Exportar treino'} <Share2 size={17}/></button>
+    </div></div>}
   </div>
 }
 
@@ -1382,7 +1434,7 @@ function AppShell() {
   }else{
     content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} backend={backend} onOpenStudent={openStudent}/>:
       page==='students'?<Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/>:
-      page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token}/>:
+      page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token} refreshBackend={refreshBackend}/>:
       page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
       page==='workouts'?<Workouts setPage={setPage} backend={backend} token={token} refreshBackend={refreshBackend} onOpenBuilder={openBuilder}/>:
       page==='builder'?<WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} initialTemplateId={selectedTemplateId}/>:
