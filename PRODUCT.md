@@ -44,3 +44,5 @@ Cadastro, login, sessão persistente, logout, perfis, convite por link, disponib
 ## Fora do escopo atual
 
 Cobrança, marketplace, nutrição, wearables, prescrição automática por IA, WebSocket e migração de stack apenas para seguir templates.
+
+20. O treinador pode desvincular um aluno sem apagar conta, treinos, sessões, histórico ou mensagens antigas. A desvinculação encerra apenas a relação ativa e impede novas ações que dependem do vínculo até que ele seja criado novamente.
