@@ -29,7 +29,7 @@ O Atlas conecta treinadores e alunos para organizar prescrição, execução e a
 15. Um treino pode conter qualquer quantidade de prescrições, com nomes livres, dias, duração, observações e exercícios próprios; não existe dependência de modelos AB/ABC.
 16. A criação de treino não usa horário sugerido.
 17. A biblioteca separa exercícios pessoais e externos; a fonte externa inicial é o wger com prioridade para pt-BR.
-13. Uma prescrição pode ser editada por completo enquanto ainda não houver sessão iniciada. Depois do primeiro início, ela fica imutável para preservar o histórico.
+18. Template representa sempre o treino completo. Ao carregar um template, cada prescrição permanece separada com seus próprios exercícios, dias, duração e observações; prescrições não são fundidas.
 
 ## Escopo implementado
 
