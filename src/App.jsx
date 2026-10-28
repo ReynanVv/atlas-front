@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
-  Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal,
+  Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
   Upload, Download, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
@@ -355,6 +355,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
   const [routineDays, setRoutineDays] = useState(backend.availability || [])
   const [busy,setBusy]=useState('')
   const [message,setMessage]=useState('')
+  const [loadedWorkoutId,setLoadedWorkoutId]=useState('')
   const [error,setError]=useState('')
   const labels = ['D','S','T','Q','Q','S','S']
   const names = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
@@ -1008,7 +1009,7 @@ function ExerciseLibrary({ setPage, token }) {
   </div>
 }
 
-function Workouts({ setPage, token, backend, onOpenBuilder }) {
+function Workouts({ setPage, token, backend, onOpenBuilder, onEditWorkout }) {
   const [query,setQuery]=useState('')
   const [tab,setTab]=useState('workouts')
   const [modelFilter,setModelFilter]=useState('')
@@ -1027,7 +1028,7 @@ function Workouts({ setPage, token, backend, onOpenBuilder }) {
   const rows=(backend.workouts || []).map(w=>({
     id:w.id,name:w.name,student:w.studentName || 'Aluno não identificado',
     routine:(w.scheduledDays || []).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ') || '—',
-    model:w.model,estimatedMinutes:w.estimatedMinutes || 0,
+    model:w.model,estimatedMinutes:w.estimatedMinutes || 0,hasStarted:!!w.latestSession,
     status:w.status || (w.latestSession?.completedAt?'Realizado':w.latestSession?'Pendente':'Pendente'),
     dueState:(w.status==='Realizado'||w.latestSession?.completedAt)?'Realizado':w.status==='Não Realizado'?'Vencido':'A vencer'
   }))
@@ -1057,7 +1058,7 @@ function Workouts({ setPage, token, backend, onOpenBuilder }) {
         <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">Todas as situações</option><option>A vencer</option><option>Vencido</option><option>Realizado</option></select>
       </div>
       <section className="panel no-pad"><div className="workout-table"><div className="workout-table-head"><span>Treino</span><span>Aluno</span><span>Rotina</span><span>Modelo</span><span>Status</span><span></span></div>
-      {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.estimatedMinutes?(w.estimatedMinutes+' min'):'tempo não informado'}</small></div></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button><MoreHorizontal size={18}/></button></div>)}
+      {filtered.map(w=><div className="workout-table-row" key={w.id}><div><span className="workout-icon"><Dumbbell size={18}/></span><div><strong>{w.name}</strong><small>{w.estimatedMinutes?(w.estimatedMinutes+' min'):'tempo não informado'}</small></div></div><span>{w.student}</span><span>{w.routine}</span><strong>{w.model}</strong><Badge tone={toneFor(w.status)}>{w.status}</Badge><button disabled={w.hasStarted} title={w.hasStarted?'Treinos já iniciados não podem ser editados para preservar o histórico.':'Editar treino'} aria-label={`Editar ${w.name}`} onClick={()=>onEditWorkout(w.id)}><Pencil size={17}/></button></div>)}
       {!filtered.length&&<div className="empty-state">Nenhum treino prescrito ainda.</div>}</div></section>
     </>:<section className="template-grid">
       {busy==='templates'&&!templates.length?<div className="panel empty-state">Carregando templates...</div>:templates.length?templates.map(t=><article className="panel template-card" key={t.id}>
@@ -1119,10 +1120,12 @@ function TemplateBuilder({ setPage, token }) {
   </div>
 }
 
-function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTemplateId = '' }) {
+function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTemplateId = '', initialWorkoutId = '' }) {
   const linkedStudents=backend.students || []
   const templates=backend.templates || []
   const library=backend.exercises || []
+  const editingWorkout=backend.workouts?.find(w=>w.id===initialWorkoutId)||null
+  const isEditing=!!initialWorkoutId
   const [syncing,setSyncing]=useState(true)
   const [items,setItems]=useState([])
   const [studentQuery,setStudentQuery]=useState('')
@@ -1182,6 +1185,24 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
 
   useEffect(()=>{if(initialTemplateId&&templates.length)applyTemplate(initialTemplateId)},[initialTemplateId,templates.length])
 
+  useEffect(()=>{
+    if(!initialWorkoutId||loadedWorkoutId===initialWorkoutId)return
+    const workout=backend.workouts?.find(w=>w.id===initialWorkoutId)
+    if(!workout)return
+    setSelectedStudentId(workout.studentId||'')
+    setTemplateId(workout.templateId||'')
+    setWorkoutName(workout.name||'')
+    setModel(workout.model||'AB')
+    setDescription(workout.description||'')
+    setEstimatedMinutes(String(workout.estimatedMinutes||0))
+    setScheduledTime(workout.scheduledTime||'')
+    setScheduledDays([...(workout.scheduledDays||[])].map(Number).sort((a,b)=>a-b))
+    setNotes(workout.notes||'')
+    setItems((workout.exercises||[]).map(normalizeItem))
+    setLoadedWorkoutId(initialWorkoutId)
+    setMessage('')
+  },[initialWorkoutId,loadedWorkoutId,backend.workouts])
+
   const chooseStudent=st=>{setSelectedStudentId(st.id);setStudentQuery('');setScheduledDays([]);setStudentOpen(false)}
   const toggleScheduledDay=day=>{if(!availableDays.includes(day))return;setScheduledDays(v=>v.includes(day)?v.filter(x=>x!==day):[...v,day].sort((a,b)=>a-b))}
 
@@ -1215,10 +1236,11 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
     if(!scheduledDays.length){setError('Selecione ao menos um dia disponível do aluno.');return}
     setBusy('workout');setError('');setMessage('')
     try{
-      await apiRequest('/workouts',{token,method:'POST',body:{
+      const body={
         studentId:selectedStudent.id,templateId:templateId||null,name:workoutName.trim(),model,
         description,estimatedMinutes:Number(estimatedMinutes)||0,scheduledTime,notes,scheduledDays,exercises:mappedExercises()
-      }})
+      }
+      await apiRequest(initialWorkoutId?`/workouts/${initialWorkoutId}`:'/workouts',{token,method:initialWorkoutId?'PATCH':'POST',body})
       await refreshBackend();setPage('workouts')
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
@@ -1226,7 +1248,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
   if(syncing)return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button><section className="panel empty-state"><Dumbbell size={34}/><h2>Atualizando dados...</h2><p>Carregando alunos, biblioteca e templates.</p></section></div>
 
   return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button>
-    <section className="page-heading"><span className="eyebrow">Treino personalizado</span><h1>Montar prescrição</h1><p>Crie do zero ou carregue um template e edite antes de salvar.</p></section>
+    <section className="page-heading"><span className="eyebrow">{isEditing?'Edição de prescrição':'Treino personalizado'}</span><h1>{isEditing?'Editar treino':'Montar prescrição'}</h1><p>{isEditing?'Ajuste a prescrição antes de o aluno iniciar o treino.':'Crie do zero ou carregue um template e edite antes de salvar.'}</p></section>
     {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><div className="panel-head"><div><h3>Informações gerais</h3><p>Dados persistidos no treino e no template.</p></div></div><div className="form-grid">
@@ -1258,7 +1280,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
         <div className="weekday-picker readonly selectable-days">{dayLabels.map((d,i)=><button type="button" key={i} disabled={!availableDays.includes(i)} className={scheduledDays.includes(i)?'active':''} onClick={()=>toggleScheduledDay(i)}>{d}</button>)}</div>
         <div className="availability-summary"><strong>{availableDays.length} dias disponíveis</strong><span>{availableDays.map(i=>dayNames[i]).join(' · ')||'Selecione um aluno'}</span></div>
       </section>
-      <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name||'—'}</strong></div><div><span>Template</span><strong>{templateId?'Sim':'Não'}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div className="summary-actions"><button className="secondary-btn full" disabled={busy==='template'||!items.length||!workoutName.trim()} onClick={saveTemplate}>{busy==='template'?'Salvando...':templateId?'Atualizar template':'Salvar como template'}</button><button className="primary-btn full" disabled={busy==='workout'||!selectedStudent||!scheduledDays.length||!items.length||!workoutName.trim()} onClick={saveWorkout}>{busy==='workout'?'Prescrevendo...':'Salvar e prescrever'} <Check size={17}/></button></div></section>
+      <section className="panel summary-panel"><h3>Resumo</h3><div><span>Aluno</span><strong>{selectedStudent?.name||'—'}</strong></div><div><span>Template</span><strong>{templateId?'Sim':'Não'}</strong></div><div><span>Exercícios</span><strong>{items.length}</strong></div><div className="summary-actions"><button className="secondary-btn full" disabled={busy==='template'||!items.length||!workoutName.trim()} onClick={saveTemplate}>{busy==='template'?'Salvando...':templateId?'Atualizar template':'Salvar como template'}</button><button className="primary-btn full" disabled={busy==='workout'||!selectedStudent||!scheduledDays.length||!items.length||!workoutName.trim()} onClick={saveWorkout}>{busy==='workout'?(isEditing?'Salvando...':'Prescrevendo...'):(isEditing?'Salvar alterações':'Salvar e prescrever')} <Check size={17}/></button></div></section>
     </aside></div>
 
     {libraryOpen&&<div className="modal-backdrop" onClick={()=>setLibraryOpen(false)}><div className="standard-modal library-picker-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setLibraryOpen(false)}><X size={18}/></button><div className="modal-icon"><BookOpen size={22}/></div><h2>Adicionar da biblioteca</h2><div className="search-box"><Search size={18}/><input value={libraryQuery} onChange={e=>setLibraryQuery(e.target.value)} placeholder="Nome, categoria ou músculo"/></div><div className="library-picker-list">{libraryMatches.length?libraryMatches.map(ex=><button key={ex.id} onClick={()=>addLibraryExercise(ex)}><div><strong>{ex.name}</strong><small>{ex.category||'Sem categoria'}</small></div><Plus size={17}/></button>):<div className="empty-state compact-empty">Nenhum exercício encontrado.</div>}</div></div></div>}
@@ -1352,7 +1374,8 @@ function AppShell() {
 
   const openStudent=id=>{setSelectedStudentId(id);setPage('studentDetail')}
   const openWorkout=id=>{setSelectedWorkoutId(id);setPage('workout')}
-  const openBuilder=(templateId='')=>{setSelectedTemplateId(templateId);setPage('builder')}
+  const openBuilder=(templateId='')=>{setSelectedTemplateId(templateId);setSelectedWorkoutId('');setPage('builder')}
+  const editWorkout=id=>{setSelectedTemplateId('');setSelectedWorkoutId(id);setPage('builder')}
 
   const logout=()=>{
     const currentToken=token
@@ -1377,8 +1400,8 @@ function AppShell() {
       page==='students'?<Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/>:
       page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token} refreshBackend={refreshBackend}/>:
       page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
-      page==='workouts'?<Workouts setPage={setPage} backend={backend} token={token} refreshBackend={refreshBackend} onOpenBuilder={openBuilder}/>:
-      page==='builder'?<WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} initialTemplateId={selectedTemplateId}/>:
+      page==='workouts'?<Workouts setPage={setPage} backend={backend} token={token} refreshBackend={refreshBackend} onOpenBuilder={openBuilder} onEditWorkout={editWorkout}/>:
+      page==='builder'?<WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} initialTemplateId={selectedTemplateId} initialWorkoutId={selectedWorkoutId}/>:
       <Messages trainer token={token} backend={backend}/>
   }
 

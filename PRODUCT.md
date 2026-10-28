@@ -24,6 +24,7 @@ O Atlas conecta treinadores e alunos para organizar prescrição, execução e a
 10. Mensagens só existem entre treinador e aluno vinculados.
 11. Notificações cobrem prescrição, mensagem e lembrete de treino.
 12. **Intensidade não faz parte do domínio do Atlas** e não deve voltar para interface, payloads ou regras.
+13. Uma prescrição pode ser editada por completo enquanto ainda não houver sessão iniciada. Depois do primeiro início, ela fica imutável para preservar o histórico.
 
 ## Escopo implementado
 
@@ -31,7 +32,6 @@ Cadastro, login, sessão persistente, logout, perfis, convite por link, disponib
 
 ## Lacunas conhecidas
 
-- edição de treino já prescrito ainda não está completa;
 - a API possui edição de exercício, mas a interface ainda não oferece todo o fluxo;
 - `src/App.jsx` é um arquivo legado grande e será refatorado incrementalmente;
 - o backend dedicado ainda contém partes herdadas do ControlFinance.
