@@ -1341,3 +1341,50 @@ button{color:inherit}
 @media(prefers-reduced-motion:reduce){
   .system-feedback{animation:none}
 }
+
+
+/* Student unlink */
+.danger-outline-btn,.danger-btn{
+  min-height:38px;
+  border-radius:10px;
+  padding:0 13px;
+  font-weight:800;
+  font-size:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.danger-outline-btn{
+  border:1px solid rgba(207,106,101,.38);
+  background:#fff;
+  color:#a94f4b;
+}
+.danger-outline-btn:hover{background:#fff6f5;border-color:rgba(207,106,101,.6)}
+.danger-btn{
+  border:1px solid var(--danger);
+  background:var(--danger);
+  color:#fff;
+}
+.danger-btn:hover{filter:brightness(.96)}
+.danger-btn:disabled,.danger-outline-btn:disabled{opacity:.5;cursor:not-allowed}
+.danger-modal-icon{background:#fff0ef;color:#a94f4b}
+.unlink-warning{
+  text-align:left;
+  border:1px solid #f0d2cf;
+  background:#fff8f7;
+  border-radius:12px;
+  padding:12px 13px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin:4px 0 18px;
+}
+.unlink-warning strong{font-size:11px;color:#8f433f}
+.unlink-warning span{font-size:10px;color:#78605e;line-height:1.5}
+.modal-actions-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(max-width:680px){
+  .student-profile-head .profile-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .student-profile-head .profile-actions .primary-btn{grid-column:1/-1}
+  .modal-actions-row{grid-template-columns:1fr}
+}
