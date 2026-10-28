@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
 import { initialsOf } from './lib/format.js'
+import { currentPrescription, workoutPrescriptions } from './lib/prescriptions.js'
 
 
 function Logo({ compact = false }) {
@@ -227,17 +228,12 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   </div>
 }
 
-function Topbar({ profile, user, token, onUserChange, onLogout }) {
+function Topbar({ profile, user, token, onUserChange, onLogout, onOpenProfile }) {
   const [profileOpen,setProfileOpen]=useState(false)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [notifications,setNotifications]=useState([])
-  const [editingProfile,setEditingProfile]=useState(false)
-  const [profileName,setProfileName]=useState(user?.name||'')
-  const [profileImage,setProfileImage]=useState('')
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
-
-  useEffect(()=>{setProfileName(user?.name||'');setProfileImage('')},[user?.id,user?.name])
 
   const loadNotifications=async()=>{
     try{setNotifications(await apiRequest('/notifications',{token}))}catch{}
@@ -266,25 +262,6 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
-  const chooseAvatar=async file=>{
-    if(!file)return
-    if(!file.type.startsWith('image/')){setError('Selecione uma imagem.');return}
-    if(file.size>1024*1024){setError('A foto deve ter no máximo 1 MB.');return}
-    try{setProfileImage(await fileToDataUrl(file));setError('')}catch(e){setError(e.message)}
-  }
-
-  const saveProfile=async()=>{
-    setBusy('saveProfile');setError('')
-    try{
-      const data=await apiRequest('/me',{token,method:'PATCH',body:{
-        name:profileName,
-        ...(profileImage?{avatarUrl:profileImage}:{})
-      }})
-      onUserChange(data.user)
-      setEditingProfile(false)
-    }catch(e){setError(e.message)}finally{setBusy('')}
-  }
-
   const unread=notifications.filter(n=>!n.readAt).length
   const profiles=user?.profiles || [profile]
   const other=profile==='trainer'?'student':'trainer'
@@ -299,26 +276,19 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
           <div className="notification-list">{notifications.length?notifications.slice(0,12).map(n=><button key={n.id} className={n.readAt?'':'unread'} onClick={async()=>{if(!n.readAt)await apiRequest(`/notifications/${n.id}/read`,{token,method:'POST'});await loadNotifications()}}><strong>{n.title}</strong><span>{n.body}</span><small>{new Date(n.createdAt).toLocaleString('pt-BR')}</small></button>):<div className="empty-popover">Nenhuma notificação.</div>}</div>
         </div>}
       </div>
-
       <div className="profile-switch topbar-popover-wrap">
-        <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false);setEditingProfile(false)}}>
+        <button className="profile-trigger" onClick={()=>{setProfileOpen(v=>!v);setNotificationsOpen(false)}}>
           <Avatar initials={initialsOf(user?.name)} size="sm" src={user?.avatarUrl}/><span><small>{profile==='student'?'Aluno':'Treinador'}</small><strong>{user?.name}</strong></span><ChevronDown size={15}/>
         </button>
         {profileOpen&&<div className="topbar-popover profile-popover">
-          {!editingProfile?<><div className="profile-popover-user"><Avatar initials={initialsOf(user?.name)} size="md" src={user?.avatarUrl}/><div><strong>{user?.name}</strong><small>{user?.email}</small></div></div>
+          <div className="profile-popover-user"><Avatar initials={initialsOf(user?.name)} size="md" src={user?.avatarUrl}/><div><strong>{user?.name}</strong><small>{user?.email}</small></div></div>
           {error&&<div className="popover-error">{error}</div>}
           <div className="profile-options">
             {profiles.includes('trainer')&&<button className={profile==='trainer'?'active':''} disabled={!!busy} onClick={()=>switchProfile('trainer')}><UsersRound size={16}/> Treinador</button>}
             {profiles.includes('student')&&<button className={profile==='student'?'active':''} disabled={!!busy} onClick={()=>switchProfile('student')}><UserRound size={16}/> Aluno</button>}
             {!profiles.includes(other)&&<button disabled={!!busy} onClick={()=>addProfile(other)}><CirclePlus size={16}/> Ativar perfil {other==='trainer'?'Treinador':'Aluno'}</button>}
-            <button onClick={()=>setEditingProfile(true)}><Settings size={16}/> Editar nome e foto</button>
-          </div></>:<div className="profile-edit-box">
-            <button className="auth-back" onClick={()=>setEditingProfile(false)}><ArrowLeft size={15}/> Voltar</button>
-            <div className="profile-photo-edit"><Avatar initials={initialsOf(profileName)} size="lg" src={profileImage||user?.avatarUrl}/><label><Upload size={15}/> Escolher foto<input type="file" accept="image/*" onChange={e=>chooseAvatar(e.target.files?.[0])}/></label></div>
-            <label><span>Nome</span><input value={profileName} onChange={e=>setProfileName(e.target.value)}/></label>
-            {error&&<div className="popover-error">{error}</div>}
-            <button className="primary-btn full" disabled={!profileName.trim()||busy==='saveProfile'} onClick={saveProfile}>{busy==='saveProfile'?'Salvando...':'Salvar perfil'}</button>
-          </div>}
+            <button onClick={()=>{setProfileOpen(false);onOpenProfile?.()}}><Settings size={16}/> Meu perfil</button>
+          </div>
         </div>}
         <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
@@ -328,7 +298,7 @@ function Topbar({ profile, user, token, onUserChange, onLogout }) {
 
 function SideNav({ profile, page, setPage }) {
   const student = [
-    ['home', Home, 'Início'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Mensagens']
+    ['home', Home, 'Início'], ['trainers', UserPlus, 'Professores'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Mensagens']
   ]
   const trainer = [
     ['dashboard', BarChart3, 'Visão geral'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Exercícios'], ['messages', MessageCircle, 'Mensagens']
@@ -338,12 +308,12 @@ function SideNav({ profile, page, setPage }) {
     <nav>{items.map(([key, Icon, label]) =>
       <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={19}/><span>{label}</span></button>
     )}</nav>
-    <button className="side-settings"><Settings size={19}/><span>Configurações</span></button>
+    <button className={page==='profile'?'side-settings active':'side-settings'} onClick={()=>setPage('profile')}><Settings size={19}/><span>Perfil</span></button>
   </aside>
 }
 
 function BottomNav({ profile, page, setPage }) {
-  const student = [['home', Home, 'Início'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Chat']]
+  const student = [['home', Home, 'Início'], ['trainers', UserPlus, 'Professores'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Chat']]
   const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Biblioteca'], ['messages', MessageCircle, 'Chat']]
   return <nav className={`bottom-nav bottom-nav-${profile}`}>{(profile === 'student' ? student : trainer).map(([key, Icon, label]) =>
     <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={20}/><span>{label}</span></button>
@@ -657,8 +627,87 @@ function Messages({ trainer = false, token }) {
   </div>
 }
 
-function TrainerDashboard({ setPage, user, backend, onOpenStudent }) {
+
+function ProfilePage({ user, token, onUserChange }) {
+  const [name,setName]=useState(user?.name||'')
+  const [image,setImage]=useState('')
+  const [trainerPublic,setTrainerPublic]=useState(Boolean(user?.trainerPublic))
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
+  const [message,setMessage]=useState('')
+  const hasTrainer=(user?.profiles||[]).includes('trainer')
+
+  useEffect(()=>{setName(user?.name||'');setTrainerPublic(Boolean(user?.trainerPublic));setImage('')},[user?.id,user?.name,user?.trainerPublic])
+
+  const chooseAvatar=async file=>{
+    if(!file)return
+    if(!file.type.startsWith('image/')){setError('Selecione uma imagem.');return}
+    if(file.size>1024*1024){setError('A foto deve ter no máximo 1 MB.');return}
+    try{setImage(await fileToDataUrl(file));setError('')}catch(e){setError(e.message)}
+  }
+
+  const save=async()=>{
+    setBusy(true);setError('');setMessage('')
+    try{
+      const data=await apiRequest('/me',{token,method:'PATCH',body:{
+        name:name.trim(),
+        ...(image?{avatarUrl:image}:{}),
+        ...(hasTrainer?{trainerPublic}:{})
+      }})
+      onUserChange(data.user)
+      setMessage('Perfil atualizado.')
+      setImage('')
+    }catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+
+  return <div className="page-stack profile-page">
+    <section className="page-heading"><span className="eyebrow">Sua conta</span><h1>Perfil</h1><p>Gerencie como você aparece no Atlas e seus dados pessoais.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
+    <div className="profile-page-grid">
+      <section className="panel profile-main-card">
+        <div className="profile-page-photo"><Avatar initials={initialsOf(name)} size="lg" src={image||user?.avatarUrl}/><label className="secondary-btn compact"><Upload size={16}/> Alterar foto<input type="file" accept="image/*" onChange={e=>chooseAvatar(e.target.files?.[0])}/></label></div>
+        <div className="form-grid"><label className="span-2"><span>Nome</span><input value={name} onChange={e=>setName(e.target.value)} /></label><label className="span-2"><span>E-mail</span><input value={user?.email||''} disabled /></label></div>
+      </section>
+      {hasTrainer&&<section className="panel visibility-card"><div className="panel-head"><div><h3>Visibilidade como treinador</h3><p>Escolha como novos alunos podem encontrar você.</p></div>{trainerPublic?<UsersRound size={20}/>:<Lock size={20}/>}</div>
+        <button type="button" className={trainerPublic?'visibility-option active':'visibility-option'} onClick={()=>setTrainerPublic(true)}><UsersRound size={19}/><div><strong>Público</strong><span>Seu perfil aparece para alunos no Atlas e eles podem se vincular diretamente.</span></div>{trainerPublic&&<Check size={18}/>}</button>
+        <button type="button" className={!trainerPublic?'visibility-option active':'visibility-option'} onClick={()=>setTrainerPublic(false)}><Lock size={19}/><div><strong>Privado</strong><span>Novos alunos entram somente pelo seu link de convite.</span></div>{!trainerPublic&&<Check size={18}/>}</button>
+      </section>}
+    </div>
+    <button className="primary-btn profile-save-btn" disabled={!name.trim()||busy} onClick={save}>{busy?'Salvando...':'Salvar perfil'} <Check size={17}/></button>
+  </div>
+}
+
+function PublicTrainers({ token, backend, refreshBackend }) {
+  const [query,setQuery]=useState('')
+  const [busy,setBusy]=useState('')
+  const [error,setError]=useState('')
+  const [message,setMessage]=useState('')
+  const trainers=backend.publicTrainers||[]
+  const filtered=trainers.filter(t=>(t.name+' '+t.email).toLowerCase().includes(query.toLowerCase()))
+
+  const link=async id=>{
+    setBusy(id);setError('');setMessage('')
+    try{
+      await apiRequest(`/trainers/${id}/link`,{token,method:'POST'})
+      await refreshBackend()
+      setMessage('Treinador vinculado. Agora você pode definir sua disponibilidade e receber prescrições.')
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  return <div className="page-stack">
+    <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Encontre treinadores que escolheram manter o perfil público no Atlas.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
+    <div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar professor"/></div>
+    {filtered.length?<div className="trainer-directory">{filtered.map(t=><article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':'Perfil público'}</Badge></div><button className={t.linked?'secondary-btn':'primary-btn'} disabled={t.linked||busy===t.id} onClick={()=>link(t.id)}>{t.linked?<><Check size={16}/> Vinculado</>:busy===t.id?'Vinculando...':<><UserPlus size={16}/> Vincular</>}</button></article>)}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
+  </div>
+}
+
+
+function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
   const [period, setPeriod] = useState('Dia')
+  const [remindBusy,setRemindBusy]=useState('')
+  const [feedback,setFeedback]=useState('')
+  const [error,setError]=useState('')
   const studentsData=backend.students || []
   const workouts=backend.workouts || []
   const dashboard=backend.dashboard || {students:[],attention:[]}
@@ -669,47 +718,42 @@ function TrainerDashboard({ setPage, user, backend, onOpenStudent }) {
   const periodStart=(()=>{
     const start=new Date(now)
     if(period==='Dia'){start.setHours(0,0,0,0);return start}
-    if(period==='Semana'){
-      start.setHours(0,0,0,0)
-      const mondayOffset=(start.getDay()+6)%7
-      start.setDate(start.getDate()-mondayOffset)
-      return start
-    }
-    if(period==='Mês'){return new Date(now.getFullYear(),now.getMonth(),1)}
+    if(period==='Semana'){start.setHours(0,0,0,0);const mondayOffset=(start.getDay()+6)%7;start.setDate(start.getDate()-mondayOffset);return start}
+    if(period==='Mês')return new Date(now.getFullYear(),now.getMonth(),1)
     return new Date(now.getFullYear(),0,1)
   })()
-  const activities=workouts
-    .filter(w=>{
-      const value=w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt
-      return value&&new Date(value)>=periodStart
-    })
-    .sort((a,b)=>new Date(b.latestSession?.completedAt||b.latestSession?.startedAt||b.createdAt)-new Date(a.latestSession?.completedAt||a.latestSession?.startedAt||a.createdAt))
-    .slice(0,6)
+  const activities=workouts.filter(w=>{const value=w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt;return value&&new Date(value)>=periodStart})
+    .sort((a,b)=>new Date(b.latestSession?.completedAt||b.latestSession?.startedAt||b.createdAt)-new Date(a.latestSession?.completedAt||a.latestSession?.startedAt||a.createdAt)).slice(0,6)
+
+  const remind=async(st,event)=>{
+    event.stopPropagation();setRemindBusy(st.id);setFeedback('');setError('')
+    try{
+      const result=await apiRequest(`/trainer/students/${st.id}/remind-workout`,{token,method:'POST'})
+      setFeedback(result.sent?`Lembrete enviado para ${st.name}.`:`O lembrete de hoje para ${st.name} já foi enviado.`)
+    }catch(e){setError(e.message)}finally{setRemindBusy('')}
+  }
 
   return <div className="page-stack"><section className="welcome-row">
     <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
-
+  {feedback&&<div className="app-success-banner">{feedback}</div>}{error&&<div className="app-error-banner">{error}</div>}
   <div className="stats-grid">
-    <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="ativos no backend"/>
+    <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="ativos no Atlas"/>
     <StatCard icon={ListChecks} label="Treinos prescritos" value={workouts.length} detail={`${completed.length} realizados`}/>
     <StatCard icon={Activity} label="Em execução" value={inProgress.length} detail="sessões abertas"/>
     <StatCard icon={Bell} label="Precisam de atenção" value={(dashboard.attention||[]).length} detail="sem treino recente ou sem prescrição"/>
   </div>
-
   <div className="grid-2 dashboard-grid">
-    <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições registradas.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
+    <section className="panel"><div className="panel-head activities-head"><div><h3>Atividades</h3><p>Estado atual das prescrições.</p></div><button className="text-btn" onClick={()=>setPage('workouts')}>Ver treinos</button></div>
       <div className="period-filter">{['Dia','Semana','Mês','Ano'].map(p=><button key={p} className={period===p?'active':''} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
-      <div className="activity-list">{activities.length?activities.map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name} · {new Date(w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt).toLocaleDateString('pt-BR')} · {w.model}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade neste período.</div>}</div>
+      <div className="activity-list">{activities.length?activities.map(w=><div className="activity-row" key={w.id}><Avatar initials={initialsOf(w.studentName)} size="sm"/><div><strong>{w.studentName || 'Aluno'}</strong><small>{w.name} · {new Date(w.latestSession?.completedAt||w.latestSession?.startedAt||w.createdAt).toLocaleDateString('pt-BR')}</small></div><Badge tone={w.status==='Realizado'?'green':w.status==='Não Realizado'?'gray':'light'}>{w.status}</Badge></div>):<div className="empty-state compact-empty">Nenhuma atividade neste período.</div>}</div>
     </section>
-
     <section className="panel"><div className="panel-head"><div><h3>Atenção necessária</h3><p>Alunos sem treino recente ou sem prescrição.</p></div><Bell size={19}/></div>
-      {(dashboard.attention||[]).length?<div className="attention-list">{dashboard.attention.map(st=><button key={st.id} onClick={()=>onOpenStudent?.(st.id)}><Avatar initials={initialsOf(st.name)} size="sm" src={st.avatarUrl}/><div><strong>{st.name}</strong><small>{st.workoutCount?st.lastCompletedAt?`Último treino ${new Date(st.lastCompletedAt).toLocaleDateString('pt-BR')}`:'Nenhum treino concluído':'Sem treino prescrito'}</small></div><ChevronRight size={17}/></button>)}</div>:<div className="empty-state compact-empty">Nenhum alerta de frequência no momento.</div>}
+      {(dashboard.attention||[]).length?<div className="attention-list">{dashboard.attention.map(st=><div className="attention-row" key={st.id}><button className="attention-main" onClick={()=>onOpenStudent?.(st.id)}><Avatar initials={initialsOf(st.name)} size="sm" src={st.avatarUrl}/><div><strong>{st.name}</strong><small>{st.workoutCount?st.lastCompletedAt?`Último treino ${new Date(st.lastCompletedAt).toLocaleDateString('pt-BR')}`:'Nenhum treino concluído':'Sem treino prescrito'}</small></div><ChevronRight size={17}/></button>{st.workoutCount>0&&<button className="attention-remind" title="Notificar aluno sobre treino pendente" disabled={remindBusy===st.id} onClick={e=>remind(st,e)}><Bell size={17}/></button>}</div>)}</div>:<div className="empty-state compact-empty">Nenhum alerta de frequência no momento.</div>}
     </section>
   </div>
-
-  <section className="panel"><div className="panel-head"><div><h3>Progresso dos alunos</h3><p>Frequência, volume e melhor carga registrados no backend.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
+  <section className="panel"><div className="panel-head"><div><h3>Ranking dos alunos</h3><p>Frequência, volume e melhor carga dos alunos.</p></div><button className="secondary-btn compact" onClick={()=>setPage('students')}>Gerenciar alunos</button></div>
     {studentsData.length?<div className="student-table progress-student-table"><div className="student-table-head"><span>Aluno</span><span>Concluídos</span><span>Volume</span><span>Carga máx.</span><span>Último treino</span><span></span></div>
     {studentsData.map(st=>{const p=progressById.get(st.id)||{};return <button className="student-table-row dashboard-student-row" key={st.id} onClick={()=>onOpenStudent?.(st.id)}><div><Avatar initials={initialsOf(st.name)} size="sm" src={st.avatarUrl}/><strong>{st.name}</strong></div><strong>{p.completedWorkouts||0}</strong><span>{Math.round(Number(p.totalVolume||0)).toLocaleString('pt-BR')}</span><span>{Number(p.maxWeight||0).toFixed(1)} kg</span><span>{p.lastCompletedAt?new Date(p.lastCompletedAt).toLocaleDateString('pt-BR'):'—'}</span><ChevronRight size={18}/></button>})}</div>:<div className="empty-state compact-empty">Nenhum aluno vinculado ainda.</div>}
   </section>
@@ -723,7 +767,6 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   const [message,setMessage]=useState('')
   const [inviteResult,setInviteResult]=useState(null)
   const linkedStudents=backend.students || []
-  const pendingInvites=(backend.invitations || []).filter(i=>i.status==='Pending')
 
   const sendInvite=async()=>{
     setBusy(true);setError('');setMessage('')
@@ -737,17 +780,13 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
 
   return <div className="page-stack">
     <section className="page-heading action-heading">
-      <div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Convites, disponibilidade e treinos vinculados ao backend.</p></div>
+      <div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Convites, disponibilidade e treinos dos seus alunos.</p></div>
       <button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button>
     </section>
 
     {error && <div className="app-error-banner">{error}</div>}
     {message && <div className="app-success-banner">{message}</div>}
 
-    {pendingInvites.length>0 && <section className="panel">
-      <div className="panel-head"><div><h3>Convites pendentes</h3><p>Aguardando aceite dos alunos.</p></div><Badge>{pendingInvites.length}</Badge></div>
-      <div className="compact-list">{pendingInvites.map(inv=><div className="compact-row" key={inv.id}><div><strong>{inv.studentEmail || 'Link de convite'}</strong><small>{inv.studentEmail ? 'Convite aceito por e-mail após o cadastro' : 'Aguardando alguém abrir e aceitar o link'}</small></div><Badge tone="light">Pendente</Badge></div>)}</div>
-    </section>}
 
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
 
@@ -1289,7 +1328,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
 
 function AppShell() {
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
-  const emptyBackend={invitations:[],students:[],workouts:[],availability:[],exercises:[],templates:[],progress:null,dashboard:null}
+  const emptyBackend={invitations:[],students:[],workouts:[],availability:[],exercises:[],templates:[],progress:null,dashboard:null,publicTrainers:[]}
   const [token,setToken]=useState('')
   const [user,setUser]=useState(null)
   const [restoringSession,setRestoringSession]=useState(true)
@@ -1315,15 +1354,16 @@ function AppShell() {
           apiRequest('/templates',{token:nextToken}),
           apiRequest('/trainer/dashboard',{token:nextToken}),
         ])
-        setBackend({ invitations, students:studentsData, workouts, availability:[], exercises, templates, progress:null, dashboard })
+        setBackend({ invitations, students:studentsData, workouts, availability:[], exercises, templates, progress:null, dashboard, publicTrainers:[] })
       } else {
-        const [invitations, availabilityData, workouts, progress] = await Promise.all([
+        const [invitations, availabilityData, workouts, progress, publicTrainers] = await Promise.all([
           apiRequest('/invitations',{token:nextToken}),
           apiRequest('/availability',{token:nextToken}),
           apiRequest('/workouts',{token:nextToken}),
           apiRequest('/progress/me',{token:nextToken}),
+          apiRequest('/trainers/public',{token:nextToken}),
         ])
-        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [], exercises:[], templates:[], progress, dashboard:null })
+        setBackend({ invitations, students:[], workouts, availability:availabilityData.days || [], exercises:[], templates:[], progress, dashboard:null, publicTrainers })
       }
     } catch (e) {
       setBackendError(e.message)
@@ -1389,14 +1429,17 @@ function AppShell() {
   if(!token||!user)return <Login onEnter={handleLogin}/>
 
   let content
-  if(profile==='student'){
+  if(page==='profile'){
+    content=<ProfilePage user={user} token={token} onUserChange={handleUserChange}/>
+  }else if(profile==='student'){
     content=page==='home'?<StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/>:
+      page==='trainers'?<PublicTrainers token={token} backend={backend} refreshBackend={refreshBackend}/>:
       page==='workout'?<WorkoutExecution setPage={setPage} token={token} workout={backend.workouts.find(w=>w.id===selectedWorkoutId)||null} refreshBackend={refreshBackend}/>:
       page==='history'?<StudentHistory backend={backend}/>:
       page==='progress'?<StudentProgress backend={backend}/>:
       <Messages token={token} backend={backend}/>
   }else{
-    content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} backend={backend} onOpenStudent={openStudent}/>:
+    content=page==='dashboard'?<TrainerDashboard setPage={setPage} user={user} token={token} backend={backend} onOpenStudent={openStudent}/>:
       page==='students'?<Students setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} onOpenStudent={openStudent}/>:
       page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token} refreshBackend={refreshBackend}/>:
       page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
@@ -1406,7 +1449,7 @@ function AppShell() {
   }
 
   return <div className="app-shell">
-    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onLogout={logout}/>
+    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onLogout={logout} onOpenProfile={()=>setPage('profile')}/>
     <SideNav profile={profile} page={page} setPage={setPage}/>
     <main className="app-main">{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
     <BottomNav profile={profile} page={page} setPage={setPage}/>
