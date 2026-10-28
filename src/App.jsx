@@ -3,7 +3,7 @@ import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
-  Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
+  Play, Plus, Search, Send, Settings, Share2, Sparkles, Star, TimerReset, Trophy,
   Upload, Download, UserMinus, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
 import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
@@ -22,6 +22,22 @@ function Logo({ compact = false }) {
 function Avatar({ initials = 'AS', size = 'md', src = '' }) {
   return <div className={`avatar avatar-${size}`}>{src?<img src={src} alt="" />:initials}</div>
 }
+
+function RatingSummary({ average = 0, count = 0, compact = false }) {
+  const value=Number(average||0)
+  return <div className={`rating-summary ${compact?'compact':''}`}>
+    <Star size={compact?14:17} fill={count?'currentColor':'none'}/>
+    <strong>{count?value.toFixed(1):'—'}</strong>
+    <span>{count?`(${count})`:'Sem avaliações'}</span>
+  </div>
+}
+
+function RatingInput({ value, onChange, disabled = false }) {
+  return <div className="rating-input" role="radiogroup" aria-label="Nota do professor">
+    {[1,2,3,4,5].map(star=><button key={star} type="button" disabled={disabled} className={star<=value?'active':''} onClick={()=>onChange(star)} aria-label={`${star} estrela${star===1?'':'s'}`}><Star size={27} fill={star<=value?'currentColor':'none'}/></button>)}
+  </div>
+}
+
 
 function Badge({ children, tone = 'green' }) {
   return <span className={`badge badge-${tone}`}>{children}</span>
@@ -609,6 +625,11 @@ function PublicTrainers({ token, backend, refreshBackend }) {
   const [trainers,setTrainers]=useState(backend.publicTrainers||[])
   const [requestTrainer,setRequestTrainer]=useState(null)
   const [requestMessage,setRequestMessage]=useState('')
+  const [profileTrainer,setProfileTrainer]=useState(null)
+  const [profileData,setProfileData]=useState(null)
+  const [profileLoading,setProfileLoading]=useState(false)
+  const [reviewRating,setReviewRating]=useState(0)
+  const [reviewComment,setReviewComment]=useState('')
   const feedback=useFeedback()
   const filtered=trainers.filter(t=>(t.name+' '+t.email).toLowerCase().includes(query.toLowerCase()))
 
@@ -631,23 +652,56 @@ function PublicTrainers({ token, backend, refreshBackend }) {
     if(!requestTrainer)return
     setBusy(requestTrainer.id);setError('')
     try{
-      await apiRequest(`/trainers/${requestTrainer.id}/request`,{
+      const trainerName=requestTrainer.name
+      const trainerId=requestTrainer.id
+      await apiRequest(`/trainers/${trainerId}/request`,{
         token,method:'POST',body:{message:requestMessage.trim()}
       })
       setRequestTrainer(null)
       setRequestMessage('')
       await Promise.all([refreshBackend(),loadTrainers()])
-      feedback.success('Solicitação enviada',`Agora ${requestTrainer.name} precisa aceitar o vínculo.`,{key:`trainer-request:${requestTrainer.id}`})
+      feedback.success('Solicitação enviada',`Agora ${trainerName} precisa aceitar o vínculo.`,{key:`trainer-request:${trainerId}`})
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
+  const openProfile=async trainer=>{
+    setProfileTrainer(trainer);setProfileData(null);setProfileLoading(true);setError('')
+    try{
+      const data=await apiRequest(`/trainers/${trainer.id}/public-profile`,{token})
+      setProfileData(data)
+      setReviewRating(Number(data.myReview?.rating||0))
+      setReviewComment(data.myReview?.comment||'')
+    }catch(e){setError(e.message);setProfileTrainer(null)}
+    finally{setProfileLoading(false)}
+  }
+
+  const saveReview=async()=>{
+    if(!profileTrainer||!reviewRating)return
+    setBusy('review');setError('')
+    try{
+      await apiRequest(`/trainers/${profileTrainer.id}/review`,{token,method:'PUT',body:{rating:reviewRating,comment:reviewComment}})
+      const data=await apiRequest(`/trainers/${profileTrainer.id}/public-profile`,{token})
+      setProfileData(data)
+      setReviewRating(Number(data.myReview?.rating||0))
+      setReviewComment(data.myReview?.comment||'')
+      await loadTrainers()
+      feedback.success('Avaliação salva','Sua nota agora faz parte da média pública do professor.',{key:'trainer-review-saved'})
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   return <div className="page-stack">
-    <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Escolha um treinador público e envie uma solicitação de vínculo.</p></section>
+    <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Compare avaliações, conheça os perfis públicos e envie uma solicitação de vínculo.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar professor"/></div>
     {loading?<section className="panel empty-state"><UsersRound size={34}/><h3>Atualizando professores...</h3><p>Buscando os perfis públicos mais recentes.</p></section>:filtered.length?<div className="trainer-directory">{filtered.map(t=>{
       const pending=t.requestStatus==='pending'
-      return <article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':pending?'Solicitação pendente':'Perfil público'}</Badge></div><button className={t.linked||pending?'secondary-btn':'primary-btn'} disabled={t.linked||pending||busy===t.id} onClick={()=>openRequest(t)}>{t.linked?<><Check size={16}/> Vinculado</>:pending?<><Clock3 size={16}/> Aguardando</>:<><UserPlus size={16}/> Solicitar vínculo</>}</button></article>
+      return <article className="panel trainer-public-card" key={t.id}>
+        <button className="trainer-public-main" onClick={()=>openProfile(t)}>
+          <Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/>
+          <div><h3>{t.name}</h3><p>{t.email}</p><RatingSummary average={t.ratingAverage} count={t.ratingCount} compact/><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':pending?'Solicitação pendente':'Perfil público'}</Badge></div>
+        </button>
+        <div className="trainer-public-actions"><button className="text-btn" onClick={()=>openProfile(t)}>Ver perfil</button><button className={t.linked||pending?'secondary-btn':'primary-btn'} disabled={t.linked||pending||busy===t.id} onClick={()=>openRequest(t)}>{t.linked?<><Check size={16}/> Vinculado</>:pending?<><Clock3 size={16}/> Aguardando</>:<><UserPlus size={16}/> Solicitar vínculo</>}</button></div>
+      </article>
     })}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
 
     {requestTrainer&&<div className="modal-backdrop" onClick={()=>busy!==requestTrainer.id&&setRequestTrainer(null)}><div className="standard-modal trainer-request-modal" onClick={e=>e.stopPropagation()}>
@@ -659,6 +713,17 @@ function PublicTrainers({ token, backend, refreshBackend }) {
       <textarea maxLength={600} value={requestMessage} onChange={e=>setRequestMessage(e.target.value)} placeholder="Ex.: Olá! Gostaria de treinar com você para melhorar minha força e condicionamento."/>
       <small className="helper-text request-char-count">{requestMessage.length}/600</small>
       <button className="primary-btn full" disabled={busy===requestTrainer.id} onClick={sendRequest}>{busy===requestTrainer.id?'Enviando...':'Enviar solicitação'} <Send size={17}/></button>
+    </div></div>}
+
+    {profileTrainer&&<div className="modal-backdrop" onClick={()=>busy!=='review'&&setProfileTrainer(null)}><div className="trainer-profile-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" disabled={busy==='review'} onClick={()=>setProfileTrainer(null)}><X size={18}/></button>
+      {profileLoading?<div className="empty-state"><UsersRound size={30}/><h3>Carregando perfil...</h3></div>:profileData&&<>
+        <section className="trainer-profile-hero"><Avatar initials={initialsOf(profileData.trainer.name)} size="lg" src={profileData.trainer.avatarUrl}/><div><span className="eyebrow">Perfil público</span><h2>{profileData.trainer.name}</h2><p>{profileData.trainer.email}</p><RatingSummary average={profileData.trainer.ratingAverage} count={profileData.trainer.ratingCount}/></div></section>
+        <section className="trainer-review-section"><div className="panel-head"><div><h3>Avaliações dos alunos</h3><p>Notas de alunos que já concluíram sessões com este professor.</p></div></div>
+          {profileData.reviews.length?<div className="public-review-list">{profileData.reviews.map(review=><article key={review.id}><div className="public-review-head"><Avatar initials={initialsOf(review.studentName)} size="sm" src={review.studentAvatarUrl}/><div><strong>{review.studentName}</strong><div className="review-stars">{[1,2,3,4,5].map(star=><Star key={star} size={13} fill={star<=review.rating?'currentColor':'none'}/>)}</div></div><small>{new Date(review.updatedAt||review.createdAt).toLocaleDateString('pt-BR')}</small></div>{review.comment&&<p>{review.comment}</p>}</article>)}</div>:<div className="empty-state compact-empty">Este professor ainda não recebeu avaliações.</div>}
+        </section>
+        {profileData.eligibleToReview?<section className="trainer-own-review"><h3>{profileData.myReview?'Editar sua avaliação':'Avaliar professor'}</h3><p>Sua avaliação aparece na média pública.</p><RatingInput value={reviewRating} onChange={setReviewRating} disabled={busy==='review'}/><textarea maxLength={1000} value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Comentário opcional sobre o acompanhamento"/><div className="review-form-footer"><small>{reviewComment.length}/1000</small><button className="primary-btn" disabled={!reviewRating||busy==='review'} onClick={saveReview}>{busy==='review'?'Salvando...':profileData.myReview?'Atualizar avaliação':'Publicar avaliação'} <Star size={16}/></button></div></section>:<div className="review-eligibility-note"><Lock size={16}/><span>Você poderá avaliar este professor depois de concluir pelo menos uma sessão prescrita por ele.</span></div>}
+      </>}
     </div></div>}
   </div>
 }
