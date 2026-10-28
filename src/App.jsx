@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
-  Upload, Download, UserPlus, UserRound, UsersRound, Video, X, Zap
+  Upload, Download, UserMinus, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
 import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
 import { initialsOf } from './lib/format.js'
@@ -769,6 +769,7 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
   const [copyWorkout,setCopyWorkout]=useState(null)
   const [copyStudentId,setCopyStudentId]=useState('')
   const [copyDays,setCopyDays]=useState([])
+  const [unlinkOpen,setUnlinkOpen]=useState(false)
   const feedback=useFeedback()
   const student=(backend.students || []).find(st=>st.id===studentId)
   if(!student) return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button><section className="panel empty-state"><UsersRound size={34}/><h2>Aluno não encontrado</h2><p>Selecione um aluno vinculado na tela anterior.</p></section></div>
@@ -843,6 +844,17 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
+  const unlinkStudent=async()=>{
+    setBusy('unlink');setError('')
+    try{
+      await apiRequest(`/trainer/students/${student.id}`,{token,method:'DELETE'})
+      setUnlinkOpen(false)
+      setPage('students')
+      await refreshBackend()
+      feedback.success('Aluno desvinculado',`O vínculo com ${student.name} foi encerrado. O histórico continua salvo.`,{key:'student-unlinked'})
+    }catch(e){setError(e.message)}finally{setBusy('')}
+  }
+
   const p=progress||{summary:{},sessions:[],exercises:[]}
   const maxVolume=Math.max(1,...(p.sessions||[]).map(x=>Number(x.volume||0)))
   const maxSessionWeight=Math.max(1,...(p.sessions||[]).map(x=>Number(x.maxWeight||0)))
@@ -850,7 +862,7 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
 
   return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button>
     {error&&<div className="app-error-banner">{error}</div>}
-    <section className="student-profile-head"><Avatar initials={initials} size="lg" src={student.avatarUrl}/><div><Badge>Aluno vinculado</Badge><h1>{student.name}</h1><p>{student.email}</p></div><div className="profile-actions"><button className="secondary-btn" disabled={busy==='report'} onClick={downloadReport}><Download size={17}/> {busy==='report'?'Gerando...':'Relatório CSV'}</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
+    <section className="student-profile-head"><Avatar initials={initials} size="lg" src={student.avatarUrl}/><div><Badge>Aluno vinculado</Badge><h1>{student.name}</h1><p>{student.email}</p></div><div className="profile-actions"><button className="danger-outline-btn" disabled={busy==='unlink'} onClick={()=>setUnlinkOpen(true)}><UserMinus size={17}/> Desvincular</button><button className="secondary-btn" disabled={busy==='report'} onClick={downloadReport}><Download size={17}/> {busy==='report'?'Gerando...':'Relatório CSV'}</button><button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={17}/> Novo treino</button></div></section>
     <div className="stats-grid"><StatCard icon={CalendarDays} label="Disponibilidade" value={student.availability?.length||0} detail="dias por semana"/><StatCard icon={Dumbbell} label="Treinos prescritos" value={workouts.length} detail="no Atlas"/><StatCard icon={Check} label="Treinos concluídos" value={completed.length} detail="sessões finalizadas"/></div>
     <div className="detail-tabs"><button className={tab==='workouts'?'active':''} onClick={()=>setTab('workouts')}>Treinos criados</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Histórico</button><button className={tab==='progress'?'active':''} onClick={()=>setTab('progress')}>Evolução</button></div>
 
@@ -865,6 +877,15 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
       <section className="panel"><div className="panel-head"><div><h3>Cargas por exercício</h3><p>Melhores marcas do aluno.</p></div><Dumbbell size={20}/></div>{p.exercises?.length?<div className="progress-exercise-list">{p.exercises.map(ex=><div key={ex.name}><strong>{ex.name}</strong><span>{Number(ex.maxWeight||0).toFixed(1)} kg</span><small>{ex.sessions} sessão(ões)</small></div>)}</div>:<div className="empty-state compact-empty">Sem séries registradas.</div>}</section>
       <section className="panel"><div className="panel-head"><div><h3>Anotações do aluno</h3><p>Comentários salvos nas séries executadas.</p></div><MessageCircle size={20}/></div>{annotations.length?<div className="training-notes-list">{annotations.slice(0,30).map(note=><div key={note.id}><strong>{note.exerciseName} · série {note.setNumber}</strong><span>{note.notes}</span><small>{note.workoutName} · {new Date(note.completedAt).toLocaleDateString('pt-BR')}</small></div>)}</div>:<div className="empty-state compact-empty">Nenhuma anotação registrada.</div>}</section>
     </>}</section>}
+
+    {unlinkOpen&&<div className="modal-backdrop" onClick={()=>busy!=='unlink'&&setUnlinkOpen(false)}><div className="standard-modal unlink-student-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" disabled={busy==='unlink'} onClick={()=>setUnlinkOpen(false)}><X size={18}/></button>
+      <div className="modal-icon danger-modal-icon"><UserMinus size={22}/></div>
+      <h2>Desvincular {student.name}?</h2>
+      <p>O acompanhamento ativo será encerrado. A conta do aluno, treinos, sessões, histórico e mensagens antigas não serão apagados.</p>
+      <div className="unlink-warning"><strong>Depois da desvinculação</strong><span>Você não poderá criar novos treinos nem enviar novas mensagens até que um novo vínculo seja criado.</span></div>
+      <div className="modal-actions-row"><button className="secondary-btn" disabled={busy==='unlink'} onClick={()=>setUnlinkOpen(false)}>Cancelar</button><button className="danger-btn" disabled={busy==='unlink'} onClick={unlinkStudent}>{busy==='unlink'?'Desvinculando...':<><UserMinus size={17}/> Desvincular aluno</>}</button></div>
+    </div></div>}
 
     {copyWorkout&&<div className="modal-backdrop" onClick={()=>setCopyWorkout(null)}><div className="standard-modal copy-workout-modal" onClick={e=>e.stopPropagation()}>
       <button className="modal-close" onClick={()=>setCopyWorkout(null)}><X size={18}/></button>
