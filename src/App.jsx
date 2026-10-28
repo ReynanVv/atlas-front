@@ -604,15 +604,25 @@ function ProfilePage({ user, token, onUserChange }) {
 function PublicTrainers({ token, backend, refreshBackend }) {
   const [query,setQuery]=useState('')
   const [busy,setBusy]=useState('')
+  const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
-  const trainers=backend.publicTrainers||[]
+  const [trainers,setTrainers]=useState(backend.publicTrainers||[])
   const filtered=trainers.filter(t=>(t.name+' '+t.email).toLowerCase().includes(query.toLowerCase()))
+
+  const loadTrainers=async()=>{
+    setLoading(true);setError('')
+    try{setTrainers(await apiRequest('/trainers/public',{token}))}
+    catch(e){setError(e.message)}
+    finally{setLoading(false)}
+  }
+
+  useEffect(()=>{loadTrainers()},[token])
 
   const link=async id=>{
     setBusy(id);setError('')
     try{
       await apiRequest(`/trainers/${id}/link`,{token,method:'POST'})
-      await refreshBackend()
+      await Promise.all([refreshBackend(),loadTrainers()])
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
@@ -620,7 +630,7 @@ function PublicTrainers({ token, backend, refreshBackend }) {
     <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Encontre treinadores que escolheram manter o perfil público no Atlas.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar professor"/></div>
-    {filtered.length?<div className="trainer-directory">{filtered.map(t=><article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':'Perfil público'}</Badge></div><button className={t.linked?'secondary-btn':'primary-btn'} disabled={t.linked||busy===t.id} onClick={()=>link(t.id)}>{t.linked?<><Check size={16}/> Vinculado</>:busy===t.id?'Vinculando...':<><UserPlus size={16}/> Vincular</>}</button></article>)}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
+    {loading?<section className="panel empty-state"><UsersRound size={34}/><h3>Atualizando professores...</h3><p>Buscando os perfis públicos mais recentes.</p></section>:filtered.length?<div className="trainer-directory">{filtered.map(t=><article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':'Perfil público'}</Badge></div><button className={t.linked?'secondary-btn':'primary-btn'} disabled={t.linked||busy===t.id} onClick={()=>link(t.id)}>{t.linked?<><Check size={16}/> Vinculado</>:busy===t.id?'Vinculando...':<><UserPlus size={16}/> Vincular</>}</button></article>)}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
   </div>
 }
 
