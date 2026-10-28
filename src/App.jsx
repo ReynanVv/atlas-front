@@ -245,7 +245,7 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   </div>
 }
 
-function Topbar({ profile, user, token, onUserChange, onLogout, onOpenProfile }) {
+function Topbar({ profile, user, token, onUserChange, onOpenProfile }) {
   const [profileOpen,setProfileOpen]=useState(false)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [notifications,setNotifications]=useState([])
@@ -304,10 +304,9 @@ function Topbar({ profile, user, token, onUserChange, onLogout, onOpenProfile })
             {profiles.includes('trainer')&&<button className={profile==='trainer'?'active':''} disabled={!!busy} onClick={()=>switchProfile('trainer')}><UsersRound size={16}/> Treinador</button>}
             {profiles.includes('student')&&<button className={profile==='student'?'active':''} disabled={!!busy} onClick={()=>switchProfile('student')}><UserRound size={16}/> Aluno</button>}
             {!profiles.includes(other)&&<button disabled={!!busy} onClick={()=>addProfile(other)}><CirclePlus size={16}/> Ativar perfil {other==='trainer'?'Treinador':'Aluno'}</button>}
-            <button onClick={()=>{setProfileOpen(false);onOpenProfile?.()}}><Settings size={16}/> Meu perfil</button>
+            <button onClick={()=>{setProfileOpen(false);onOpenProfile?.()}}><Settings size={16}/> Minha conta</button>
           </div>
         </div>}
-        <button className="logout-action" onClick={onLogout} title="Sair"><LogOut size={18}/><span>Sair</span></button>
       </div>
     </div>
   </header>
@@ -325,7 +324,7 @@ function SideNav({ profile, page, setPage }) {
     <nav>{items.map(([key, Icon, label]) =>
       <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={19}/><span>{label}</span></button>
     )}</nav>
-    <button className={page==='profile'?'side-settings active':'side-settings'} onClick={()=>setPage('profile')}><Settings size={19}/><span>Perfil</span></button>
+    <button className={page==='profile'?'side-settings active':'side-settings'} onClick={()=>setPage('profile')}><Settings size={19}/><span>Conta</span></button>
   </aside>
 }
 
@@ -568,7 +567,7 @@ function Messages({ trainer = false, token }) {
 }
 
 
-function ProfilePage({ user, token, onUserChange }) {
+function ProfilePage({ user, token, onUserChange, onLogout }) {
   const [name,setName]=useState(user?.name||'')
   const [image,setImage]=useState('')
   const [trainerPublic,setTrainerPublic]=useState(Boolean(user?.trainerPublic))
@@ -596,12 +595,12 @@ function ProfilePage({ user, token, onUserChange }) {
       }})
       onUserChange(data.user)
       setImage('')
-      feedback.success('Perfil atualizado','Suas alterações foram salvas.',{key:'profile-saved'})
+      feedback.success('Conta atualizada','Suas alterações foram salvas.',{key:'account-saved'})
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
   return <div className="page-stack profile-page">
-    <section className="page-heading"><span className="eyebrow">Sua conta</span><h1>Perfil</h1><p>Gerencie como você aparece no Atlas e seus dados pessoais.</p></section>
+    <section className="page-heading"><span className="eyebrow">Configurações</span><h1>Conta</h1><p>Gerencie seus dados, visibilidade e acesso ao Atlas.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="profile-page-grid">
       <section className="panel profile-main-card">
@@ -609,11 +608,15 @@ function ProfilePage({ user, token, onUserChange }) {
         <div className="form-grid"><label className="span-2"><span>Nome</span><input value={name} onChange={e=>setName(e.target.value)} /></label><label className="span-2"><span>E-mail</span><input value={user?.email||''} disabled /></label></div>
       </section>
       {hasTrainer&&<section className="panel visibility-card"><div className="panel-head"><div><h3>Visibilidade como treinador</h3><p>Escolha como novos alunos podem encontrar você.</p></div>{trainerPublic?<UsersRound size={20}/>:<Lock size={20}/>}</div>
-        <button type="button" className={trainerPublic?'visibility-option active':'visibility-option'} onClick={()=>setTrainerPublic(true)}><UsersRound size={19}/><div><strong>Público</strong><span>Seu perfil aparece para alunos no Atlas e eles podem se vincular diretamente.</span></div>{trainerPublic&&<Check size={18}/>}</button>
+        <button type="button" className={trainerPublic?'visibility-option active':'visibility-option'} onClick={()=>setTrainerPublic(true)}><UsersRound size={19}/><div><strong>Público</strong><span>Seu perfil aparece para alunos no Atlas e eles podem enviar uma solicitação de vínculo.</span></div>{trainerPublic&&<Check size={18}/>}</button>
         <button type="button" className={!trainerPublic?'visibility-option active':'visibility-option'} onClick={()=>setTrainerPublic(false)}><Lock size={19}/><div><strong>Privado</strong><span>Novos alunos entram somente pelo seu link de convite.</span></div>{!trainerPublic&&<Check size={18}/>}</button>
       </section>}
     </div>
-    <button className="primary-btn profile-save-btn" disabled={!name.trim()||busy} onClick={save}>{busy?'Salvando...':'Salvar perfil'} <Check size={17}/></button>
+    <button className="primary-btn profile-save-btn" disabled={!name.trim()||busy} onClick={save}>{busy?'Salvando...':'Salvar conta'} <Check size={17}/></button>
+    <section className="panel account-session-card">
+      <div><h3>Sessão</h3><p>Encerre seu acesso neste dispositivo.</p></div>
+      <button className="danger-outline-btn account-logout-btn" onClick={onLogout}><LogOut size={17}/> Sair da conta</button>
+    </section>
   </div>
 }
 
@@ -1348,7 +1351,7 @@ function AppShell() {
 
   let content
   if(page==='profile'){
-    content=<ProfilePage user={user} token={token} onUserChange={handleUserChange}/>
+    content=<ProfilePage user={user} token={token} onUserChange={handleUserChange} onLogout={logout}/>
   }else if(profile==='student'){
     content=page==='home'?<StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/>:
       page==='trainers'?<PublicTrainers token={token} backend={backend} refreshBackend={refreshBackend}/>:
@@ -1369,7 +1372,7 @@ function AppShell() {
   }
 
   return <div className="app-shell">
-    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onLogout={logout} onOpenProfile={()=>setPage('profile')}/>
+    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onOpenProfile={()=>setPage('profile')}/>
     <SideNav profile={profile} page={page} setPage={setPage}/>
     <main className="app-main">{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
     <BottomNav profile={profile} page={page} setPage={setPage}/>
