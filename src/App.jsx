@@ -318,7 +318,7 @@ function SideNav({ profile, page, setPage }) {
     ['home', Home, 'Início'], ['trainers', UserPlus, 'Professores'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Mensagens']
   ]
   const trainer = [
-    ['dashboard', BarChart3, 'Visão geral'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Exercícios'], ['messages', MessageCircle, 'Mensagens']
+    ['dashboard', BarChart3, 'Visão geral'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['reviews', Star, 'Avaliações'], ['library', BookOpen, 'Exercícios'], ['messages', MessageCircle, 'Mensagens']
   ]
   const items = profile === 'student' ? student : trainer
   return <aside className="side-nav">
@@ -331,7 +331,7 @@ function SideNav({ profile, page, setPage }) {
 
 function BottomNav({ profile, page, setPage }) {
   const student = [['home', Home, 'Início'], ['trainers', UserPlus, 'Professores'], ['history', History, 'Histórico'], ['progress', LineChart, 'Evolução'], ['messages', MessageCircle, 'Chat']]
-  const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['library', BookOpen, 'Biblioteca'], ['messages', MessageCircle, 'Chat']]
+  const trainer = [['dashboard', BarChart3, 'Painel'], ['students', UsersRound, 'Alunos'], ['workouts', Dumbbell, 'Treinos'], ['reviews', Star, 'Avaliações'], ['library', BookOpen, 'Biblioteca'], ['messages', MessageCircle, 'Chat']]
   return <nav className={`bottom-nav bottom-nav-${profile}`}>{(profile === 'student' ? student : trainer).map(([key, Icon, label]) =>
     <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={20}/><span>{label}</span></button>
   )}</nav>
@@ -725,6 +725,63 @@ function PublicTrainers({ token, backend, refreshBackend }) {
         {profileData.eligibleToReview?<section className="trainer-own-review"><h3>{profileData.myReview?'Editar sua avaliação':'Avaliar professor'}</h3><p>Sua avaliação aparece na média pública.</p><RatingInput value={reviewRating} onChange={setReviewRating} disabled={busy==='review'}/><textarea maxLength={1000} value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Comentário opcional sobre o acompanhamento"/><div className="review-form-footer"><small>{reviewComment.length}/1000</small><button className="primary-btn" disabled={!reviewRating||busy==='review'} onClick={saveReview}>{busy==='review'?'Salvando...':profileData.myReview?'Atualizar avaliação':'Publicar avaliação'} <Star size={16}/></button></div></section>:<div className="review-eligibility-note"><Lock size={16}/><span>Você poderá avaliar este professor depois de concluir pelo menos uma sessão prescrita por ele.</span></div>}
       </>}
     </div></div>}
+  </div>
+}
+
+
+function TrainerReviews({ token }) {
+  const [data,setData]=useState({summary:{ratingAverage:0,ratingCount:0,distribution:{}},reviews:[]})
+  const [filter,setFilter]=useState('all')
+  const [loading,setLoading]=useState(true)
+  const [error,setError]=useState('')
+
+  const load=async()=>{
+    setLoading(true);setError('')
+    try{setData(await apiRequest('/trainer/reviews',{token}))}
+    catch(e){setError(e.message)}
+    finally{setLoading(false)}
+  }
+
+  useEffect(()=>{load()},[token])
+
+  const summary=data.summary||{ratingAverage:0,ratingCount:0,distribution:{}}
+  const reviews=data.reviews||[]
+  const visible=filter==='all'?reviews:reviews.filter(review=>String(review.rating)===filter)
+  const maxCount=Math.max(1,...[1,2,3,4,5].map(star=>Number(summary.distribution?.[star]||0)))
+
+  return <div className="page-stack trainer-reviews-page">
+    <section className="page-heading"><span className="eyebrow">Reputação</span><h1>Avaliações recebidas</h1><p>Acompanhe a percepção dos alunos que já concluíram sessões com você.</p></section>
+    {error&&<div className="app-error-banner">{error}</div>}
+
+    {loading?<section className="panel empty-state"><Star size={34}/><h3>Carregando avaliações...</h3><p>Atualizando sua nota e os comentários mais recentes.</p></section>:<>
+      <div className="trainer-review-summary-grid">
+        <section className="panel trainer-rating-overview">
+          <span className="eyebrow">Nota geral</span>
+          <div className="trainer-rating-score">{summary.ratingCount?Number(summary.ratingAverage||0).toFixed(1):'—'}</div>
+          <div className="trainer-rating-stars" aria-label={summary.ratingCount?`Nota média ${Number(summary.ratingAverage||0).toFixed(1)} de 5`:'Sem avaliações'}>
+            {[1,2,3,4,5].map(star=><Star key={star} size={22} fill={star<=Math.round(Number(summary.ratingAverage||0))?'currentColor':'none'}/>)}
+          </div>
+          <strong>{summary.ratingCount||0} avaliação{summary.ratingCount===1?'':'ões'}</strong>
+        </section>
+
+        <section className="panel trainer-rating-distribution">
+          <div className="panel-head"><div><h3>Distribuição das notas</h3><p>Quantidade de avaliações por estrela.</p></div></div>
+          <div className="rating-distribution-list">{[5,4,3,2,1].map(star=>{
+            const count=Number(summary.distribution?.[star]||0)
+            const width=summary.ratingCount?Math.max(count?5:0,count/maxCount*100):0
+            return <div className="rating-distribution-row" key={star}><span>{star} <Star size={13} fill="currentColor"/></span><div><i style={{width:`${width}%`}}></i></div><strong>{count}</strong></div>
+          })}</div>
+        </section>
+      </div>
+
+      <section className="panel trainer-reviews-list-panel">
+        <div className="panel-head trainer-reviews-head"><div><h3>Comentários dos alunos</h3><p>{visible.length} resultado{visible.length===1?'':'s'} exibido{visible.length===1?'':'s'}.</p></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Todas as notas</option>{[5,4,3,2,1].map(star=><option value={String(star)} key={star}>{star} estrela{star===1?'':'s'}</option>)}</select></div>
+        {visible.length?<div className="trainer-received-review-list">{visible.map(review=><article className="trainer-received-review" key={review.id}>
+          <div className="trainer-received-review-head"><Avatar initials={initialsOf(review.studentName)} size="md" src={review.studentAvatarUrl}/><div><strong>{review.studentName}</strong><small>{review.studentEmail}</small></div><div className="trainer-received-review-meta"><div className="review-stars">{[1,2,3,4,5].map(star=><Star key={star} size={14} fill={star<=review.rating?'currentColor':'none'}/>)}</div><span>{new Date(review.updatedAt||review.createdAt).toLocaleDateString('pt-BR')}</span></div></div>
+          {review.comment?<p>{review.comment}</p>:<p className="muted-review-comment">O aluno deixou apenas a nota.</p>}
+        </article>)}</div>:<div className="empty-state compact-empty"><Star size={28}/><h3>{reviews.length?'Nenhuma avaliação com essa nota':'Nenhuma avaliação recebida ainda'}</h3><p>{reviews.length?'Escolha outro filtro para visualizar as avaliações.':'Quando um aluno elegível avaliar seu acompanhamento, a avaliação aparecerá aqui.'}</p></div>}
+      </section>
+    </>}
   </div>
 }
 
@@ -1305,6 +1362,7 @@ function AppShell() {
       page==='studentDetail'?<StudentDetail setPage={setPage} backend={backend} studentId={selectedStudentId} token={token} refreshBackend={refreshBackend}/>:
       page==='library'?<ExerciseLibrary setPage={setPage} token={token}/>:
       page==='workouts'?<Workouts setPage={setPage} backend={backend} token={token} refreshBackend={refreshBackend} onOpenBuilder={openBuilder} onEditWorkout={editWorkout}/>:
+      page==='reviews'?<TrainerReviews token={token}/>:
       page==='templateBuilder'?<TemplateBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend}/>:
       page==='builder'?<WorkoutBuilder setPage={setPage} token={token} backend={backend} refreshBackend={refreshBackend} initialTemplateId={selectedTemplateId} initialWorkoutId={selectedWorkoutId}/>:
       <Messages trainer token={token} backend={backend}/>
