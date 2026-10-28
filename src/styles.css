@@ -1388,3 +1388,8 @@ button{color:inherit}
   .student-profile-head .profile-actions .primary-btn{grid-column:1/-1}
   .modal-actions-row{grid-template-columns:1fr}
 }
+
+
+/* Public trainer link requests */
+.trainer-request-modal .avatar{margin:0 auto 12px}.trainer-request-modal textarea{min-height:110px;text-align:left}.request-char-count{display:block;text-align:right;margin:-6px 0 12px}.link-request-panel{display:flex;flex-direction:column;gap:12px}.link-request-list{display:flex;flex-direction:column}.link-request-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:13px 0;border-top:1px solid var(--line)}.link-request-row:first-child{border-top:0}.link-request-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.link-request-copy strong{font-size:13px}.link-request-copy small,.link-request-copy span{font-size:10px;color:var(--muted)}.link-request-copy p{font-size:11px;line-height:1.5;color:var(--ink-2);margin:5px 0}.link-request-actions{display:flex;gap:7px;align-items:center}
+@media(max-width:680px){.link-request-row{grid-template-columns:auto 1fr}.link-request-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}.link-request-actions button{width:100%}}
