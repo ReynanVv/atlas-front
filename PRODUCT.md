@@ -52,3 +52,5 @@ Cobrança, marketplace, nutrição, wearables, prescrição automática por IA, 
 22. Alunos que concluíram ao menos uma sessão prescrita por um professor podem avaliá-lo de 1 a 5 estrelas com comentário opcional. Cada aluno possui uma avaliação por professor, que pode ser atualizada. A média e a quantidade de avaliações aparecem no perfil público.
 
 23. O professor possui uma página privada de avaliações recebidas com nota média, total, distribuição por estrelas e lista de avaliações/comentários dos alunos.
+
+24. A página Conta centraliza dados pessoais, visibilidade e sessão. A ação de sair fica nessa página, não no topo global da aplicação.
