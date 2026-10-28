@@ -10,7 +10,7 @@ import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from 
 import { initialsOf } from './lib/format.js'
 import { currentPrescription, workoutPrescriptions } from './lib/prescriptions.js'
 import { FeedbackProvider, useFeedback } from './ui/FeedbackProvider.jsx'
-import atlasLogo from './img/logo.jpeg'
+import atlasLogo from './img/logo.png'
 
 
 function Logo({ compact = false }) {
