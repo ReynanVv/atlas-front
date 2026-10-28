@@ -1486,3 +1486,38 @@ button{color:inherit}
     white-space:nowrap;
   }
 }
+
+
+/* Atlas uploaded logo */
+.logo{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+}
+.logo-image{
+  display:block;
+  height:42px;
+  width:auto;
+  max-width:170px;
+  object-fit:contain;
+}
+.logo.compact .logo-image{
+  height:34px;
+}
+.auth-logo .logo-image{
+  height:54px;
+  max-width:210px;
+}
+.session-restore-card .logo-image{
+  height:50px;
+}
+@media(max-width:680px){
+  .topbar .logo-image{
+    height:36px;
+    max-width:140px;
+  }
+  .auth-logo .logo-image{
+    height:46px;
+    max-width:180px;
+  }
+}

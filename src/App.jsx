@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
+  Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, Star, TimerReset, Trophy,
@@ -10,12 +10,12 @@ import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from 
 import { initialsOf } from './lib/format.js'
 import { currentPrescription, workoutPrescriptions } from './lib/prescriptions.js'
 import { FeedbackProvider, useFeedback } from './ui/FeedbackProvider.jsx'
+import atlasLogo from './img/logo.jpeg'
 
 
 function Logo({ compact = false }) {
   return <div className={`logo ${compact ? 'compact' : ''}`}>
-    <span className="logo-mark"><Activity size={compact ? 18 : 22} strokeWidth={2.5}/></span>
-    {!compact && <span>Atlas</span>}
+    <img className="logo-image" src={atlasLogo} alt="Atlas"/>
   </div>
 }
 
