@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
+  Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
   Play, Plus, Search, Send, Settings, Share2, Sparkles, Star, TimerReset, Trophy,
