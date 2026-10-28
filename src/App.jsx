@@ -350,7 +350,7 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
 
   return <div className="page-stack">
     <section className="welcome-row">
-      <div><span className="eyebrow">Seu espaço de treino</span><h1>Boa noite, {user?.name || 'Aluno'} 👋</h1><p>{currentPlan ? 'Sua próxima prescrição está pronta.' : 'Defina sua rotina e vincule-se a um treinador para receber treinos.'}</p></div>
+      <div><span className="eyebrow">Seu espaço de treino</span><p>{currentPlan ? 'Sua próxima prescrição está pronta.' : 'Defina sua rotina e vincule-se a um treinador para receber treinos.'}</p></div>
       <div className="streak-card"><Flame size={21}/><span><strong>{completedCount} sessão{completedCount===1?'':'ões'}</strong><small>concluída{completedCount===1?'':'s'}</small></span></div>
     </section>
 
@@ -657,7 +657,7 @@ function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
   }
 
   return <div className="page-stack"><section className="welcome-row">
-    <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
+    <div><span className="eyebrow">Painel do treinador</span><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
   {error&&<div className="app-error-banner">{error}</div>}
