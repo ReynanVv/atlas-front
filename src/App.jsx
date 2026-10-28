@@ -245,7 +245,7 @@ function InviteOnboarding({ inviteToken, onComplete }) {
   </div>
 }
 
-function Topbar({ profile, user, token, onUserChange, onOpenProfile }) {
+function Topbar({ profile, user, token, onUserChange, onOpenAccount }) {
   const [profileOpen,setProfileOpen]=useState(false)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [notifications,setNotifications]=useState([])
@@ -304,7 +304,7 @@ function Topbar({ profile, user, token, onUserChange, onOpenProfile }) {
             {profiles.includes('trainer')&&<button className={profile==='trainer'?'active':''} disabled={!!busy} onClick={()=>switchProfile('trainer')}><UsersRound size={16}/> Treinador</button>}
             {profiles.includes('student')&&<button className={profile==='student'?'active':''} disabled={!!busy} onClick={()=>switchProfile('student')}><UserRound size={16}/> Aluno</button>}
             {!profiles.includes(other)&&<button disabled={!!busy} onClick={()=>addProfile(other)}><CirclePlus size={16}/> Ativar perfil {other==='trainer'?'Treinador':'Aluno'}</button>}
-            <button onClick={()=>{setProfileOpen(false);onOpenProfile?.()}}><Settings size={16}/> Minha conta</button>
+            <button onClick={()=>{setProfileOpen(false);onOpenAccount?.()}}><Settings size={16}/> Minha conta</button>
           </div>
         </div>}
       </div>
@@ -324,7 +324,7 @@ function SideNav({ profile, page, setPage }) {
     <nav>{items.map(([key, Icon, label]) =>
       <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}><Icon size={19}/><span>{label}</span></button>
     )}</nav>
-    <button className={page==='profile'?'side-settings active':'side-settings'} onClick={()=>setPage('profile')}><Settings size={19}/><span>Conta</span></button>
+    <button className={page==='account'?'side-settings active':'side-settings'} onClick={()=>setPage('account')}><Settings size={19}/><span>Conta</span></button>
   </aside>
 }
 
@@ -567,7 +567,7 @@ function Messages({ trainer = false, token }) {
 }
 
 
-function ProfilePage({ user, token, onUserChange, onLogout }) {
+function AccountPage({ user, token, onUserChange, onLogout }) {
   const [name,setName]=useState(user?.name||'')
   const [image,setImage]=useState('')
   const [trainerPublic,setTrainerPublic]=useState(Boolean(user?.trainerPublic))
@@ -599,7 +599,7 @@ function ProfilePage({ user, token, onUserChange, onLogout }) {
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
-  return <div className="page-stack profile-page">
+  return <div className="page-stack account-page">
     <section className="page-heading"><span className="eyebrow">Configurações</span><h1>Conta</h1><p>Gerencie seus dados, visibilidade e acesso ao Atlas.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="profile-page-grid">
@@ -1350,8 +1350,8 @@ function AppShell() {
   if(!token||!user)return <Login onEnter={handleLogin}/>
 
   let content
-  if(page==='profile'){
-    content=<ProfilePage user={user} token={token} onUserChange={handleUserChange} onLogout={logout}/>
+  if(page==='account'){
+    content=<AccountPage user={user} token={token} onUserChange={handleUserChange} onLogout={logout}/>
   }else if(profile==='student'){
     content=page==='home'?<StudentHome setPage={setPage} token={token} user={user} backend={backend} refreshBackend={refreshBackend} onOpenWorkout={openWorkout}/>:
       page==='trainers'?<PublicTrainers token={token} backend={backend} refreshBackend={refreshBackend}/>:
@@ -1372,7 +1372,7 @@ function AppShell() {
   }
 
   return <div className="app-shell">
-    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onOpenProfile={()=>setPage('profile')}/>
+    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onOpenAccount={()=>setPage('account')}/>
     <SideNav profile={profile} page={page} setPage={setPage}/>
     <main className="app-main">{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
     <BottomNav profile={profile} page={page} setPage={setPage}/>
