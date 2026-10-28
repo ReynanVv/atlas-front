@@ -21,6 +21,7 @@
 - Preserve as regras de `PRODUCT.md`.
 - "Intensidade" foi removida do produto.
 - UI deve continuar funcional em desktop e mobile.
+- Feedback de ações deve seguir `docs/feedback.md`; loading fica no controle local e acknowledgements globais só entram quando o resultado não é autoevidente.
 - Chamadas HTTP compartilhadas pertencem a `src/lib/api.js`.
 - Novos módulos JS/JSX devem ficar abaixo de 350 linhas; `src/App.jsx` é legado temporário.
 - Refatore por responsabilidade, nunca por corte arbitrário de linhas.

@@ -1250,3 +1250,94 @@ button{color:inherit}
 .workout-plan-list{display:flex;flex-direction:column;gap:14px}.student-workout-plan{border:1px solid var(--line);border-radius:15px;padding:15px}.student-workout-plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.student-workout-plan-head>div{display:flex;flex-direction:column;gap:5px}.student-workout-plan-head small{display:flex;align-items:center;gap:6px;color:var(--muted)}.student-prescription-list{display:flex;flex-direction:column;gap:7px}.student-prescription-list>button{border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px;display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;text-align:left}.student-prescription-list>button:disabled{opacity:.65}.student-prescription-list>button div{display:flex;flex-direction:column;gap:3px}.student-prescription-list small{font-size:10px;color:var(--muted)}.prescription-choice-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.prescription-choice-grid button{border:1px solid var(--line);text-align:left;display:flex;flex-direction:column;gap:7px}.prescription-choice-grid button span{font-size:11px;color:var(--muted)}.library-source-tabs{align-self:flex-start}.external-exercise-image{width:100%;height:150px;object-fit:contain;background:#f7f8fa;border-radius:12px;margin-bottom:10px}.prescription-builder-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end}.prescription-builder-head p{color:var(--muted);font-size:11px;margin-top:3px}.prescription-builder-list{display:flex;flex-direction:column;gap:14px}.prescription-builder-card{display:flex;flex-direction:column;gap:18px}.prescription-head-actions{display:flex;align-items:center;gap:8px}.prescription-days{display:flex;flex-direction:column;gap:8px;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fafbfb}.prescription-days>small{font-size:10px;color:var(--muted)}.prescription-exercises-head{margin-top:0}.external-library-modal{width:min(720px,94vw)}.library-search-row{display:flex;gap:8px;margin:12px 0}.library-search-row .search-box{flex:1}.library-picker-item{display:grid;grid-template-columns:1fr auto;align-items:center;border-bottom:1px solid var(--line)}.library-add-main{border:0;background:transparent;padding:11px;display:flex;align-items:center;justify-content:space-between;text-align:left}.library-add-main div{display:flex;flex-direction:column}.library-add-main small{color:var(--muted)}.library-video-btn{border:0;background:var(--surface-green);color:var(--primary-deep);width:34px;height:34px;border-radius:9px;display:grid;place-items:center;margin-right:8px}.builder-exercise.extended-exercise{grid-template-columns:32px 1fr repeat(4,.55fr) minmax(120px,.8fr) 30px}.prescription-fields{margin-top:0}
 @media(max-width:900px){.prescription-choice-grid{grid-template-columns:1fr}.builder-exercise.extended-exercise{grid-template-columns:32px 1fr 55px 55px 30px}.builder-exercise.extended-exercise label:nth-of-type(n+3){display:none}.prescription-builder-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:680px){.student-prescription-list>button{grid-template-columns:1fr auto}.student-prescription-list>button>svg{display:none}.prescription-head-actions .text-btn{font-size:10px}.library-search-row{flex-direction:column}.library-search-row .search-box{width:100%}}
+
+
+/* System status acknowledgement */
+.system-feedback-viewport{
+  position:fixed;
+  right:22px;
+  bottom:22px;
+  z-index:2200;
+  width:min(380px,calc(100vw - 32px));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  pointer-events:none;
+}
+.system-feedback{
+  pointer-events:auto;
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr) 28px;
+  gap:10px;
+  align-items:start;
+  padding:13px 12px;
+  border:1px solid #DDE2E7;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 14px 36px rgba(11,27,58,.14);
+  animation:atlas-feedback-in .18s ease-out;
+}
+.system-feedback-mark{
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-size:13px;
+  font-weight:900;
+  background:#EEF2F3;
+  color:#0B1B3A;
+}
+.system-feedback-success .system-feedback-mark{background:#E7F6EE;color:#17683C}
+.system-feedback-error .system-feedback-mark{background:#FDEBEC;color:#A6262E}
+.system-feedback-warning .system-feedback-mark{background:#FFF3D7;color:#8B5B00}
+.system-feedback-info .system-feedback-mark{background:#EAF1F8;color:#245980}
+.system-feedback-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding-top:2px;
+}
+.system-feedback-copy strong{
+  color:#0B1B3A;
+  font-size:12px;
+  line-height:1.25;
+}
+.system-feedback-copy span{
+  color:#66727D;
+  font-size:10px;
+  line-height:1.45;
+}
+.system-feedback-close{
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:#7B858E;
+  font-size:20px;
+  line-height:1;
+  display:grid;
+  place-items:center;
+}
+.system-feedback-close:hover{background:#F2F4F5;color:#0B1B3A}
+@keyframes atlas-feedback-in{
+  from{opacity:0;transform:translateY(8px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:680px){
+  .system-feedback-viewport{
+    left:12px;
+    right:12px;
+    bottom:calc(78px + env(safe-area-inset-bottom));
+    width:auto;
+  }
+  .system-feedback{
+    border-radius:13px;
+    padding:12px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .system-feedback{animation:none}
+}

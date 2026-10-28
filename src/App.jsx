@@ -9,6 +9,7 @@ import {
 import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
 import { initialsOf } from './lib/format.js'
 import { currentPrescription, workoutPrescriptions } from './lib/prescriptions.js'
+import { FeedbackProvider, useFeedback } from './ui/FeedbackProvider.jsx'
 
 
 function Logo({ compact = false }) {
@@ -324,8 +325,8 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
   const [routineOpen, setRoutineOpen] = useState(false)
   const [routineDays, setRoutineDays] = useState(backend.availability || [])
   const [busy,setBusy]=useState('')
-  const [message,setMessage]=useState('')
   const [error,setError]=useState('')
+  const feedback=useFeedback()
   const labels = ['D','S','T','Q','Q','S','S']
   const names = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
   const workouts = backend.workouts || []
@@ -338,12 +339,12 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
   const toggleDay = i => setRoutineDays(v => v.includes(i) ? v.filter(x => x !== i) : [...v, i].sort((a,b)=>a-b))
 
   const saveAvailability = async () => {
-    setBusy('availability');setError('');setMessage('')
+    setBusy('availability');setError('')
     try {
       await apiRequest('/availability',{token,method:'PUT',body:{days:routineDays}})
-      setMessage('Disponibilidade salva. Seus treinadores já podem usar esses dias nas prescrições.')
       await refreshBackend()
       setRoutineOpen(false)
+      feedback.success('Disponibilidade salva','Seus treinadores já podem usar esses dias nas prescrições.',{key:'availability-saved'})
     } catch(e) { setError(e.message) } finally { setBusy('') }
   }
 
@@ -354,7 +355,6 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
     </section>
 
     {error && <div className="app-error-banner">{error}</div>}
-    {message && <div className="app-success-banner">{message}</div>}
 
     {currentWorkout&&currentPlan ? <section className="today-card">
       <div className="today-main">
@@ -415,6 +415,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   const [finalNotes,setFinalNotes]=useState('')
   const [videoSrc,setVideoSrc]=useState('')
   const [videoTitle,setVideoTitle]=useState('')
+  const feedback=useFeedback()
   const prescription=prescriptions.find(p=>p.id===prescriptionId)||null
 
   useEffect(()=>{if(initialPrescriptionId)setPrescriptionId(initialPrescriptionId);else if(prescriptions.length===1)setPrescriptionId(prescriptions[0].id)},[workout?.id,initialPrescriptionId])
@@ -446,7 +447,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
     try{await apiRequest(`/sessions/${session.id}/exercises/${exerciseId}/sets/${setNumber}`,{token,method:'PUT',body:{reps:Number(draft.reps)||0,weight:Number(draft.weight)||0,notes:draft.notes||''}});setSaved(v=>({...v,[key]:true}))}
     catch(e){setError(e.message)}finally{setBusy('')}
   }
-  const finish=async()=>{if(!session)return;setBusy('finish');setError('');try{await apiRequest(`/sessions/${session.id}/complete`,{token,method:'POST',body:{notes:finalNotes}});await refreshBackend();setPage('home')}catch(e){setError(e.message)}finally{setBusy('')}}
+  const finish=async()=>{if(!session)return;setBusy('finish');setError('');try{await apiRequest(`/sessions/${session.id}/complete`,{token,method:'POST',body:{notes:finalNotes}});await refreshBackend();feedback.success('Prescrição concluída','Sua execução foi salva no histórico.',{key:'workout-completed'});setPage('home')}catch(e){setError(e.message)}finally{setBusy('')}}
   const openTimer=seconds=>{setTimerSeconds(Math.max(0,Number(seconds)||90));setTimerRunning(true);setTimer(true)}
   const closeVideo=()=>{if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc);setVideoSrc('');setVideoTitle('')}
   const playExerciseVideo=async ex=>{setError('');try{closeVideo();if(ex.videoUrl){setVideoSrc(ex.videoUrl);setVideoTitle(ex.name);return}if(ex.exerciseId){const blob=await apiBlob(`/exercises/${ex.exerciseId}/video`,token);setVideoSrc(URL.createObjectURL(blob));setVideoTitle(ex.name);return}setError('Este exercício não possui vídeo cadastrado.')}catch(e){setError(e.message)}}
@@ -557,7 +558,7 @@ function ProfilePage({ user, token, onUserChange }) {
   const [trainerPublic,setTrainerPublic]=useState(Boolean(user?.trainerPublic))
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
-  const [message,setMessage]=useState('')
+  const feedback=useFeedback()
   const hasTrainer=(user?.profiles||[]).includes('trainer')
 
   useEffect(()=>{setName(user?.name||'');setTrainerPublic(Boolean(user?.trainerPublic));setImage('')},[user?.id,user?.name,user?.trainerPublic])
@@ -570,7 +571,7 @@ function ProfilePage({ user, token, onUserChange }) {
   }
 
   const save=async()=>{
-    setBusy(true);setError('');setMessage('')
+    setBusy(true);setError('')
     try{
       const data=await apiRequest('/me',{token,method:'PATCH',body:{
         name:name.trim(),
@@ -578,14 +579,14 @@ function ProfilePage({ user, token, onUserChange }) {
         ...(hasTrainer?{trainerPublic}:{})
       }})
       onUserChange(data.user)
-      setMessage('Perfil atualizado.')
       setImage('')
+      feedback.success('Perfil atualizado','Suas alterações foram salvas.',{key:'profile-saved'})
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
   return <div className="page-stack profile-page">
     <section className="page-heading"><span className="eyebrow">Sua conta</span><h1>Perfil</h1><p>Gerencie como você aparece no Atlas e seus dados pessoais.</p></section>
-    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
+    {error&&<div className="app-error-banner">{error}</div>}
     <div className="profile-page-grid">
       <section className="panel profile-main-card">
         <div className="profile-page-photo"><Avatar initials={initialsOf(name)} size="lg" src={image||user?.avatarUrl}/><label className="secondary-btn compact"><Upload size={16}/> Alterar foto<input type="file" accept="image/*" onChange={e=>chooseAvatar(e.target.files?.[0])}/></label></div>
@@ -604,22 +605,20 @@ function PublicTrainers({ token, backend, refreshBackend }) {
   const [query,setQuery]=useState('')
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
-  const [message,setMessage]=useState('')
   const trainers=backend.publicTrainers||[]
   const filtered=trainers.filter(t=>(t.name+' '+t.email).toLowerCase().includes(query.toLowerCase()))
 
   const link=async id=>{
-    setBusy(id);setError('');setMessage('')
+    setBusy(id);setError('')
     try{
       await apiRequest(`/trainers/${id}/link`,{token,method:'POST'})
       await refreshBackend()
-      setMessage('Treinador vinculado. Agora você pode definir sua disponibilidade e receber prescrições.')
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   return <div className="page-stack">
     <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Encontre treinadores que escolheram manter o perfil público no Atlas.</p></section>
-    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
+    {error&&<div className="app-error-banner">{error}</div>}
     <div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar professor"/></div>
     {filtered.length?<div className="trainer-directory">{filtered.map(t=><article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':'Perfil público'}</Badge></div><button className={t.linked?'secondary-btn':'primary-btn'} disabled={t.linked||busy===t.id} onClick={()=>link(t.id)}>{t.linked?<><Check size={16}/> Vinculado</>:busy===t.id?'Vinculando...':<><UserPlus size={16}/> Vincular</>}</button></article>)}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
   </div>
@@ -629,8 +628,8 @@ function PublicTrainers({ token, backend, refreshBackend }) {
 function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
   const [period, setPeriod] = useState('Dia')
   const [remindBusy,setRemindBusy]=useState('')
-  const [feedback,setFeedback]=useState('')
   const [error,setError]=useState('')
+  const feedback=useFeedback()
   const studentsData=backend.students || []
   const workouts=backend.workouts || []
   const dashboard=backend.dashboard || {students:[],attention:[]}
@@ -649,10 +648,11 @@ function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
     .sort((a,b)=>new Date(b.latestSession?.completedAt||b.latestSession?.startedAt||b.createdAt)-new Date(a.latestSession?.completedAt||a.latestSession?.startedAt||a.createdAt)).slice(0,6)
 
   const remind=async(st,event)=>{
-    event.stopPropagation();setRemindBusy(st.id);setFeedback('');setError('')
+    event.stopPropagation();setRemindBusy(st.id);setError('')
     try{
       const result=await apiRequest(`/trainer/students/${st.id}/remind-workout`,{token,method:'POST'})
-      setFeedback(result.sent?`Lembrete enviado para ${st.name}.`:`O lembrete de hoje para ${st.name} já foi enviado.`)
+      if(result.sent)feedback.success('Lembrete enviado',`${st.name} recebeu uma notificação de treino pendente.`,{key:`reminder:${st.id}`})
+      else feedback.info('Lembrete já enviado',`O lembrete de hoje para ${st.name} já tinha sido enviado.`,{key:`reminder:${st.id}`})
     }catch(e){setError(e.message)}finally{setRemindBusy('')}
   }
 
@@ -660,7 +660,7 @@ function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
     <div><span className="eyebrow">Painel do treinador</span><h1>Boa noite, {user?.name || 'Treinador'} 👋</h1><p>Acompanhe frequência, volume, carga e prescrições dos seus alunos.</p></div>
     <button className="primary-btn" onClick={()=>setPage('builder')}><Plus size={18}/> Criar treino</button>
   </section>
-  {feedback&&<div className="app-success-banner">{feedback}</div>}{error&&<div className="app-error-banner">{error}</div>}
+  {error&&<div className="app-error-banner">{error}</div>}
   <div className="stats-grid">
     <StatCard icon={UsersRound} label="Alunos vinculados" value={studentsData.length} detail="ativos no Atlas"/>
     <StatCard icon={ListChecks} label="Treinos prescritos" value={workouts.length} detail={`${completed.length} realizados`}/>
@@ -687,16 +687,15 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   const [invite, setInvite] = useState(false)
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
-  const [message,setMessage]=useState('')
   const [inviteResult,setInviteResult]=useState(null)
+  const feedback=useFeedback()
   const linkedStudents=backend.students || []
 
   const sendInvite=async()=>{
-    setBusy(true);setError('');setMessage('')
+    setBusy(true);setError('')
     try{
       const result=await apiRequest('/invitations',{token,method:'POST'})
       setInviteResult(result)
-      setMessage('Link de convite gerado com sucesso.')
       await refreshBackend()
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
@@ -708,7 +707,6 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
     </section>
 
     {error && <div className="app-error-banner">{error}</div>}
-    {message && <div className="app-success-banner">{message}</div>}
 
 
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
@@ -736,13 +734,13 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
       </> : <>
         <div className="invite-link-success"><Check size={20}/><div><strong>Convite pronto</strong><span>Compartilhe o link com o aluno. Ele poderá criar uma conta ou entrar em uma já existente.</span></div></div>
         <label className="field-label">Link de convite</label>
-        <div className="copy-link official-invite-link"><span>{inviteResult.inviteUrl}</span><button onClick={()=>navigator.clipboard?.writeText(inviteResult.inviteUrl)}>Copiar</button></div>
+        <div className="copy-link official-invite-link"><span>{inviteResult.inviteUrl}</span><button onClick={async()=>{try{await navigator.clipboard.writeText(inviteResult.inviteUrl);feedback.success('Link copiado','O convite está na área de transferência.',{key:'invite-copied'})}catch{feedback.error('Não foi possível copiar','Copie o link manualmente.',{key:'invite-copy-error'})}}}>Copiar</button></div>
         <div className="invite-link-actions">
           <button className="primary-btn full" onClick={async()=>{
             if(navigator.share){
               try{await navigator.share({title:'Convite Atlas',text:'Você foi convidado para treinar pelo Atlas.',url:inviteResult.inviteUrl})}catch{}
             }else{
-              await navigator.clipboard?.writeText(inviteResult.inviteUrl)
+              try{await navigator.clipboard.writeText(inviteResult.inviteUrl);feedback.success('Link copiado','O convite está na área de transferência.',{key:'invite-copied'})}catch{feedback.error('Não foi possível copiar','Copie o link manualmente.',{key:'invite-copy-error'})}
             }
           }}><Share2 size={17}/> Compartilhar convite</button>
           <button className="secondary-btn full" onClick={()=>setInviteResult(null)}>Gerar outro convite</button>
@@ -761,6 +759,7 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
   const [copyWorkout,setCopyWorkout]=useState(null)
   const [copyStudentId,setCopyStudentId]=useState('')
   const [copyDays,setCopyDays]=useState([])
+  const feedback=useFeedback()
   const student=(backend.students || []).find(st=>st.id===studentId)
   if(!student) return <div className="page-stack"><button className="back-link" onClick={()=>setPage('students')}><ArrowLeft size={17}/> Voltar aos alunos</button><section className="panel empty-state"><UsersRound size={34}/><h2>Aluno não encontrado</h2><p>Selecione um aluno vinculado na tela anterior.</p></section></div>
 
@@ -790,6 +789,7 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
       const url=URL.createObjectURL(blob)
       const a=document.createElement('a');a.href=url;a.download=`atlas-${student.name.toLowerCase().replace(/[^a-z0-9]+/gi,'-')}-relatorio.csv`;a.click()
       URL.revokeObjectURL(url)
+      feedback.success('Relatório gerado','O arquivo CSV foi baixado.',{key:'report-downloaded'})
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
@@ -825,9 +825,11 @@ function StudentDetail({ setPage, backend, studentId, token, refreshBackend }) {
     if(!copyWorkout||!copyStudentId||!copyDays.length)return
     setBusy('copy');setError('')
     try{
+      const targetName=copyTarget?.name||'aluno selecionado'
       await apiRequest('/workouts/'+copyWorkout.id+'/copy',{token,method:'POST',body:{studentId:copyStudentId,scheduledDays:copyDays}})
       await refreshBackend()
       setCopyWorkout(null);setCopyStudentId('');setCopyDays([])
+      feedback.success('Treino exportado',`Uma cópia foi criada para ${targetName}.`,{key:'workout-exported'})
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
@@ -878,15 +880,16 @@ function ExerciseLibrary({ setPage, token }) {
   const [videoTitle,setVideoTitle]=useState('')
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
+  const feedback=useFeedback()
 
   const load=async(next=filters)=>{setBusy('load');setError('');try{const q=new URLSearchParams();Object.entries(next).forEach(([k,v])=>{if(String(v||'').trim())q.set(k,String(v).trim())});setItems(await apiRequest(`/exercises${q.toString()?`?${q.toString()}`:''}`,{token}))}catch(e){setError(e.message)}finally{setBusy('')}}
   const loadExternal=async()=>{setBusy('external');setError('');try{const q=new URLSearchParams();if(filters.name.trim())q.set('search',filters.name.trim());const data=await apiRequest(`/exercises/external?${q}`,{token});setExternalItems(data.items||[])}catch(e){setError(e.message)}finally{setBusy('')}}
   useEffect(()=>{load()},[])
   useEffect(()=>{if(source==='external'&&!externalItems.length)loadExternal()},[source])
 
-  const submit=async()=>{if(!form.name.trim())return;setBusy('save');setError('');try{let videoBase64='',videoMime='',videoFilename='';if(form.videoFile){videoBase64=await fileToDataUrl(form.videoFile);videoMime=form.videoFile.type;videoFilename=form.videoFile.name}await apiRequest('/exercises',{token,method:'POST',body:{name:form.name,category:form.category,muscleGroups:form.muscleGroups.split(',').map(v=>v.trim()).filter(Boolean),description:form.description,videoUrl:form.videoUrl,videoBase64,videoMime,videoFilename}});setForm({name:'',category:'',muscleGroups:'',description:'',videoUrl:'',videoFile:null});setModal(false);await load()}catch(e){setError(e.message)}finally{setBusy('')}}
+  const submit=async()=>{if(!form.name.trim())return;setBusy('save');setError('');try{let videoBase64='',videoMime='',videoFilename='';if(form.videoFile){videoBase64=await fileToDataUrl(form.videoFile);videoMime=form.videoFile.type;videoFilename=form.videoFile.name}await apiRequest('/exercises',{token,method:'POST',body:{name:form.name,category:form.category,muscleGroups:form.muscleGroups.split(',').map(v=>v.trim()).filter(Boolean),description:form.description,videoUrl:form.videoUrl,videoBase64,videoMime,videoFilename}});setForm({name:'',category:'',muscleGroups:'',description:'',videoUrl:'',videoFile:null});setModal(false);await load();feedback.success('Exercício salvo','O exercício foi adicionado à sua biblioteca.',{key:'exercise-saved'})}catch(e){setError(e.message)}finally{setBusy('')}}
   const play=async(ex)=>{setError('');try{if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc);if(ex.videoUrl){setVideoSrc(ex.videoUrl);setVideoTitle(ex.name);return}if(ex.hasUploadedVideo){const blob=await apiBlob(`/exercises/${ex.id}/video`,token);setVideoSrc(URL.createObjectURL(blob));setVideoTitle(ex.name)}}catch(e){setError(e.message)}}
-  const remove=async id=>{setBusy(id);setError('');try{await apiRequest(`/exercises/${id}`,{token,method:'DELETE'});await load()}catch(e){setError(e.message)}finally{setBusy('')}}
+  const remove=async id=>{setBusy(id);setError('');try{await apiRequest(`/exercises/${id}`,{token,method:'DELETE'});await load();feedback.success('Exercício removido','O item saiu da sua biblioteca.',{key:'exercise-removed'})}catch(e){setError(e.message)}finally{setBusy('')}}
   const display=source==='personal'?items:externalItems
 
   return <div className="page-stack">
@@ -907,13 +910,14 @@ function Workouts({ setPage, token, backend, onOpenBuilder, onEditWorkout }) {
   const [templates,setTemplates]=useState([])
   const [error,setError]=useState('')
   const [busy,setBusy]=useState('')
+  const feedback=useFeedback()
   const loadTemplates=async()=>{setBusy('templates');setError('');try{setTemplates(await apiRequest('/templates',{token}))}catch(e){setError(e.message)}finally{setBusy('')}}
   useEffect(()=>{loadTemplates()},[token])
 
   const rows=(backend.workouts||[]).map(w=>({id:w.id,name:w.name,student:w.studentName||'Aluno não identificado',routine:(w.scheduledDays||[]).map(d=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ')||'—',prescriptionCount:workoutPrescriptions(w).length,hasStarted:!!w.latestSession,status:w.status||'Pendente',dueState:w.status==='Realizado'?'Realizado':w.status==='Não Realizado'?'Vencido':'A vencer'}))
   const filtered=rows.filter(w=>{const matches=(w.name+' '+w.student+' '+w.status+' '+w.dueState).toLowerCase().includes(query.toLowerCase());return matches&&(!statusFilter||w.dueState===statusFilter)})
   const toneFor=status=>status==='Realizado'?'green':status==='Não Realizado'?'gray':'light'
-  const removeTemplate=async id=>{setBusy(id);setError('');try{await apiRequest('/templates/'+id,{token,method:'DELETE'});await loadTemplates()}catch(e){setError(e.message)}finally{setBusy('')}}
+  const removeTemplate=async id=>{setBusy(id);setError('');try{await apiRequest('/templates/'+id,{token,method:'DELETE'});await loadTemplates();feedback.success('Template removido','O template foi excluído.',{key:'template-removed'})}catch(e){setError(e.message)}finally{setBusy('')}}
 
   return <div className="page-stack"><section className="page-heading action-heading"><div><span className="eyebrow">Prescrição</span><h1>Treinos & templates</h1><p>Monte planos livres com quantas prescrições forem necessárias.</p></div><div className="heading-actions">{tab==='templates'&&<button className="secondary-btn" onClick={()=>setPage('templateBuilder')}><Plus size={18}/> Novo template</button>}<button className="primary-btn" onClick={()=>onOpenBuilder('')}><Plus size={18}/> Criar treino</button></div></section>
     {error&&<div className="app-error-banner">{error}</div>}
@@ -948,7 +952,7 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
   const [videoTitle,setVideoTitle]=useState('')
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
-  const [message,setMessage]=useState('')
+  const feedback=useFeedback()
   const dayLabels=['D','S','T','Q','Q','S','S']
   const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
@@ -986,7 +990,6 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
       ...p,
       scheduledDays:selectedStudent?(p.scheduledDays||[]).filter(day=>allowed.includes(day)):(p.scheduledDays||[])
     },i)))
-    setMessage(`Template "${t.name}" carregado com ${source.length} prescrições separadas.`)
   }
   useEffect(()=>{if(initialTemplateId&&templates.length&&!initialWorkoutId&&!templateMode)applyTemplate(initialTemplateId)},[initialTemplateId,templates.length])
 
@@ -1008,14 +1011,14 @@ function WorkoutBuilder({ setPage, token, backend, refreshBackend, initialTempla
 
   const mapped=()=>prescriptions.map(p=>({name:p.name.trim(),notes:p.notes,estimatedMinutes:Number(p.estimatedMinutes)||0,scheduledDays:p.scheduledDays,exercises:p.items.map(ex=>({exerciseId:ex.exerciseId||null,name:ex.name.trim(),sets:Math.max(1,parseInt(ex.sets,10)||1),reps:Math.max(1,parseInt(ex.reps,10)||1),suggestedWeight:Math.max(0,Number(String(ex.weight).replace(',','.'))||0),restSeconds:Math.max(0,parseInt(ex.rest,10)||0),notes:ex.notes.trim(),videoUrl:ex.videoUrl.trim()}))}))
   const validate=()=>{if(!workoutName.trim())return 'Informe o nome do treino.';if(!selectedStudent)return 'Selecione um aluno.';if(!prescriptions.length)return 'Adicione uma prescrição.';for(const [i,p] of prescriptions.entries()){if(!p.name.trim())return `Informe o nome da prescrição ${i+1}.`;if(!p.scheduledDays.length)return `Selecione os dias da prescrição ${p.name||i+1}.`;if(!p.items.length)return `Adicione exercícios à prescrição ${p.name||i+1}.`;if(p.items.some(ex=>!ex.name.trim()))return `Preencha todos os exercícios de ${p.name||i+1}.`}return ''}
-  const save=async()=>{if(templateMode){await saveAsTemplate();return}const validation=validate();if(validation){setError(validation);return}setBusy('workout');setError('');setMessage('');try{const body={studentId:selectedStudent.id,name:workoutName.trim(),description,notes,prescriptions:mapped()};await apiRequest(initialWorkoutId?`/workouts/${initialWorkoutId}`:'/workouts',{token,method:initialWorkoutId?'PATCH':'POST',body});await refreshBackend();setPage('workouts')}catch(e){setError(e.message)}finally{setBusy('')}}
+  const save=async()=>{if(templateMode){await saveAsTemplate();return}const validation=validate();if(validation){setError(validation);return}setBusy('workout');setError('');try{const body={studentId:selectedStudent.id,name:workoutName.trim(),description,notes,prescriptions:mapped()};await apiRequest(initialWorkoutId?`/workouts/${initialWorkoutId}`:'/workouts',{token,method:initialWorkoutId?'PATCH':'POST',body});await refreshBackend();feedback.success(initialWorkoutId?'Treino atualizado':'Treino prescrito',initialWorkoutId?'As alterações foram salvas.':'O plano foi enviado ao aluno.',{key:'workout-saved'});setPage('workouts')}catch(e){setError(e.message)}finally{setBusy('')}}
   const validateTemplate=()=>{if(!workoutName.trim())return 'Informe o nome do template.';if(!prescriptions.length)return 'Adicione uma prescrição.';for(const [i,p] of prescriptions.entries()){if(!p.name.trim())return `Informe o nome da prescrição ${i+1}.`;if(!p.items.length)return `Adicione exercícios à prescrição ${p.name||i+1}.`;if(p.items.some(ex=>!ex.name.trim()))return `Preencha todos os exercícios de ${p.name||i+1}.`}return ''}
-  const saveAsTemplate=async()=>{const validation=validateTemplate();if(validation){setError(validation);return}setBusy('template');setError('');try{await apiRequest('/templates',{token,method:'POST',body:{name:workoutName.trim(),description,notes,prescriptions:mapped()}});setMessage(`Template de treino "${workoutName}" salvo com ${prescriptions.length} prescrições.`);await refreshBackend();if(templateMode)setPage('workouts')}catch(e){setError(e.message)}finally{setBusy('')}}
+  const saveAsTemplate=async()=>{const validation=validateTemplate();if(validation){setError(validation);return}setBusy('template');setError('');try{await apiRequest('/templates',{token,method:'POST',body:{name:workoutName.trim(),description,notes,prescriptions:mapped()}});await refreshBackend();feedback.success('Template salvo',`"${workoutName}" foi salvo com ${prescriptions.length} prescrições.`,{key:'template-saved'});if(templateMode)setPage('workouts')}catch(e){setError(e.message)}finally{setBusy('')}}
 
 
   if(syncing)return <div className="page-stack builder-page"><section className="panel empty-state"><Dumbbell size={34}/><h2>Atualizando dados...</h2></section></div>
   return <div className="page-stack builder-page"><button className="back-link" onClick={()=>setPage('workouts')}><ArrowLeft size={17}/> Voltar aos treinos</button><section className="page-heading"><span className="eyebrow">{templateMode?'Template de treino':initialWorkoutId?'Edição de treino':'Novo treino'}</span><h1>{templateMode?'Novo template':initialWorkoutId?'Editar plano de treino':'Montar plano de treino'}</h1><p>{templateMode?'O template representa o plano inteiro e mantém cada prescrição separada.':'Adicione quantas prescrições precisar. O treino não fica limitado a AB, ABC ou qualquer modelo fixo.'}</p></section>
-    {error&&<div className="app-error-banner">{error}</div>}{message&&<div className="app-success-banner">{message}</div>}
+    {error&&<div className="app-error-banner">{error}</div>}
     <div className="builder-layout"><div className="builder-main">
       <section className="panel form-panel"><h3>Informações do treino</h3><div className="form-grid">{!templateMode&&<label className="span-2 combo-field"><span>Aluno</span><div className="combo-box"><Search size={17}/><input value={studentOpen?studentQuery:(selectedStudent?.name||'')} onFocus={()=>{setStudentQuery('');setStudentOpen(true)}} onChange={e=>{setStudentQuery(e.target.value);setStudentOpen(true)}} placeholder="Selecione o aluno"/>{studentOpen&&<div className="combo-menu">{matches.length?matches.map(st=><button type="button" key={st.id} onClick={()=>chooseStudent(st)}><Avatar initials={initialsOf(st.name)} size="xs"/><span><strong>{st.name}</strong><small>{st.email}</small></span></button>):<small>Nenhum aluno encontrado</small>}</div>}</div></label>}<label className="span-2"><span>Nome do treino</span><input value={workoutName} onChange={e=>setWorkoutName(e.target.value)} placeholder="Ex.: Plano de hipertrofia"/></label><label className="span-2"><span>Descrição</span><textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Objetivo e contexto do plano"/></label><label className="span-2"><span>Observações gerais</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Orientações gerais para o aluno"/></label>{!templateMode&&<label className="span-2"><span>Carregar template de treino</span><select value="" onChange={e=>applyTemplate(e.target.value)}><option value="">Selecione um template</option>{templates.map(t=><option value={t.id} key={t.id}>{t.name} · {t.prescriptions?.length||1} prescrições</option>)}</select></label>}</div></section>
 
@@ -1166,5 +1169,5 @@ function AppShell() {
 }
 
 export default function App() {
-  return <AppShell/>
+  return <FeedbackProvider><AppShell/></FeedbackProvider>
 }
