@@ -1500,6 +1500,11 @@ button{color:inherit}
   width:auto;
   max-width:170px;
   object-fit:contain;
+  background:transparent;
+}
+.topbar .logo,
+.topbar .logo-image{
+  background:transparent;
 }
 .logo.compact .logo-image{
   height:34px;
