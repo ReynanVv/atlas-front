@@ -1086,7 +1086,7 @@ button{color:inherit}
 
 .profile-register-choice{margin-top:8px}
 .bottom-nav-trainer{grid-template-columns:repeat(6,1fr)!important}
-.bottom-nav-student{grid-template-columns:repeat(4,1fr)!important}
+.bottom-nav-student{grid-template-columns:repeat(5,minmax(0,1fr))!important}
 
 @media(max-width:900px){
   .progress-student-table .student-table-head,
@@ -1470,5 +1470,19 @@ button{color:inherit}
   }
   .account-logout-btn{
     width:100%;
+  }
+}
+
+
+@media(max-width:680px){
+  .bottom-nav-student button{
+    min-width:0;
+    font-size:8px;
+  }
+  .bottom-nav-student button span{
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
   }
 }
