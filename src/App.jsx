@@ -6,62 +6,9 @@ import {
   Play, Plus, Search, Send, Settings, Share2, Sparkles, TimerReset, Trophy,
   Upload, Download, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
+import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
+import { initialsOf } from './lib/format.js'
 
-
-const API_URL = 'https://atlas-api-vkr4.onrender.com/atlas-api'
-
-const SESSION_STORAGE_KEY = 'atlas.auth.token'
-
-function readStoredToken() {
-  try { return localStorage.getItem(SESSION_STORAGE_KEY) || '' } catch { return '' }
-}
-
-function storeToken(token) {
-  try {
-    if (token) localStorage.setItem(SESSION_STORAGE_KEY, token)
-    else localStorage.removeItem(SESSION_STORAGE_KEY)
-  } catch {}
-}
-
-
-function initialsOf(name) {
-  const parts=String(name || '').trim().split(/\s+/).filter(Boolean)
-  if(!parts.length) return '?'
-  return (parts.length===1 ? parts[0].slice(0,2) : parts[0][0]+parts[parts.length-1][0]).toUpperCase()
-}
-
-async function apiRequest(path, { token, method = 'GET', body } = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const payload = response.status === 204 ? null : await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(payload?.error || 'Não foi possível concluir a ação.')
-  return payload
-}
-
-
-async function apiBlob(path, token) {
-  const response=await fetch(`${API_URL}${path}`,{headers:{Authorization:`Bearer ${token}`}})
-  if(!response.ok){
-    const payload=await response.json().catch(()=>({}))
-    throw new Error(payload?.error || 'Não foi possível carregar o arquivo.')
-  }
-  return response.blob()
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve,reject)=>{
-    const reader=new FileReader()
-    reader.onload=()=>resolve(String(reader.result||''))
-    reader.onerror=()=>reject(new Error('Não foi possível ler o arquivo.'))
-    reader.readAsDataURL(file)
-  })
-}
 
 function Logo({ compact = false }) {
   return <div className={`logo ${compact ? 'compact' : ''}`}>

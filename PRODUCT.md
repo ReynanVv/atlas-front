@@ -1,0 +1,41 @@
+# Atlas — Produto e escopo do MVP
+
+## Problema
+
+O Atlas conecta treinadores e alunos para organizar prescrição, execução e acompanhamento de treinos sem depender de planilhas, mensagens dispersas ou cadastros manuais de alunos pelo treinador.
+
+## Atores
+
+- **Aluno:** recebe convites, informa disponibilidade, executa treinos, registra séries, acompanha evolução e conversa com treinadores.
+- **Treinador:** convida alunos por link, acompanha vínculos e disponibilidade, mantém biblioteca e templates, prescreve treinos, acompanha progresso e conversa com alunos.
+- **Usuário com múltiplos perfis:** a mesma conta pode ter perfil de aluno e treinador e alternar o perfil ativo.
+
+## Regras do MVP
+
+1. Convite é feito por **link**; o treinador não informa e-mail do aluno.
+2. Um treinador pode ter zero ou mais alunos.
+3. Um aluno pode ter um ou mais treinadores.
+4. A disponibilidade pertence ao aluno.
+5. O treinador só prescreve em dias disponíveis do aluno.
+6. Treinos podem ser criados do zero ou por template.
+7. Exercícios usam séries, repetições, carga sugerida, descanso, observação e vídeo.
+8. O aluno registra o executado por série e conclui a sessão.
+9. Histórico e evolução derivam das sessões registradas.
+10. Mensagens só existem entre treinador e aluno vinculados.
+11. Notificações cobrem prescrição, mensagem e lembrete de treino.
+12. **Intensidade não faz parte do domínio do Atlas** e não deve voltar para interface, payloads ou regras.
+
+## Escopo implementado
+
+Cadastro, login, sessão persistente, logout, perfis, convite por link, disponibilidade, alunos vinculados, biblioteca, templates, prescrição, execução, histórico, evolução, dashboard do treinador, mensagens, notificações, relatório CSV e cópia de treino.
+
+## Lacunas conhecidas
+
+- edição de treino já prescrito ainda não está completa;
+- a API possui edição de exercício, mas a interface ainda não oferece todo o fluxo;
+- `src/App.jsx` é um arquivo legado grande e será refatorado incrementalmente;
+- o backend dedicado ainda contém partes herdadas do ControlFinance.
+
+## Fora do escopo atual
+
+Cobrança, marketplace, nutrição, wearables, prescrição automática por IA, WebSocket e migração de stack apenas para seguir templates.
