@@ -607,6 +607,9 @@ function PublicTrainers({ token, backend, refreshBackend }) {
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [trainers,setTrainers]=useState(backend.publicTrainers||[])
+  const [requestTrainer,setRequestTrainer]=useState(null)
+  const [requestMessage,setRequestMessage]=useState('')
+  const feedback=useFeedback()
   const filtered=trainers.filter(t=>(t.name+' '+t.email).toLowerCase().includes(query.toLowerCase()))
 
   const loadTrainers=async()=>{
@@ -618,22 +621,47 @@ function PublicTrainers({ token, backend, refreshBackend }) {
 
   useEffect(()=>{loadTrainers()},[token])
 
-  const link=async id=>{
-    setBusy(id);setError('')
+  const openRequest=trainer=>{
+    setRequestTrainer(trainer)
+    setRequestMessage('')
+    setError('')
+  }
+
+  const sendRequest=async()=>{
+    if(!requestTrainer)return
+    setBusy(requestTrainer.id);setError('')
     try{
-      await apiRequest(`/trainers/${id}/link`,{token,method:'POST'})
+      await apiRequest(`/trainers/${requestTrainer.id}/request`,{
+        token,method:'POST',body:{message:requestMessage.trim()}
+      })
+      setRequestTrainer(null)
+      setRequestMessage('')
       await Promise.all([refreshBackend(),loadTrainers()])
+      feedback.success('Solicitação enviada',`Agora ${requestTrainer.name} precisa aceitar o vínculo.`,{key:`trainer-request:${requestTrainer.id}`})
     }catch(e){setError(e.message)}finally{setBusy('')}
   }
 
   return <div className="page-stack">
-    <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Encontre treinadores que escolheram manter o perfil público no Atlas.</p></section>
+    <section className="page-heading"><span className="eyebrow">Descobrir</span><h1>Professores</h1><p>Escolha um treinador público e envie uma solicitação de vínculo.</p></section>
     {error&&<div className="app-error-banner">{error}</div>}
     <div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar professor"/></div>
-    {loading?<section className="panel empty-state"><UsersRound size={34}/><h3>Atualizando professores...</h3><p>Buscando os perfis públicos mais recentes.</p></section>:filtered.length?<div className="trainer-directory">{filtered.map(t=><article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':'Perfil público'}</Badge></div><button className={t.linked?'secondary-btn':'primary-btn'} disabled={t.linked||busy===t.id} onClick={()=>link(t.id)}>{t.linked?<><Check size={16}/> Vinculado</>:busy===t.id?'Vinculando...':<><UserPlus size={16}/> Vincular</>}</button></article>)}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
+    {loading?<section className="panel empty-state"><UsersRound size={34}/><h3>Atualizando professores...</h3><p>Buscando os perfis públicos mais recentes.</p></section>:filtered.length?<div className="trainer-directory">{filtered.map(t=>{
+      const pending=t.requestStatus==='pending'
+      return <article className="panel trainer-public-card" key={t.id}><Avatar initials={initialsOf(t.name)} size="lg" src={t.avatarUrl}/><div><h3>{t.name}</h3><p>{t.email}</p><Badge tone={t.linked?'green':'light'}>{t.linked?'Vinculado':pending?'Solicitação pendente':'Perfil público'}</Badge></div><button className={t.linked||pending?'secondary-btn':'primary-btn'} disabled={t.linked||pending||busy===t.id} onClick={()=>openRequest(t)}>{t.linked?<><Check size={16}/> Vinculado</>:pending?<><Clock3 size={16}/> Aguardando</>:<><UserPlus size={16}/> Solicitar vínculo</>}</button></article>
+    })}</div>:<section className="panel empty-state"><UsersRound size={34}/><h3>Nenhum professor encontrado</h3><p>Você ainda pode entrar por um link de convite de um treinador privado.</p></section>}
+
+    {requestTrainer&&<div className="modal-backdrop" onClick={()=>busy!==requestTrainer.id&&setRequestTrainer(null)}><div className="standard-modal trainer-request-modal" onClick={e=>e.stopPropagation()}>
+      <button className="modal-close" disabled={busy===requestTrainer.id} onClick={()=>setRequestTrainer(null)}><X size={18}/></button>
+      <Avatar initials={initialsOf(requestTrainer.name)} size="lg" src={requestTrainer.avatarUrl}/>
+      <h2>Solicitar vínculo com {requestTrainer.name}</h2>
+      <p>O professor receberá sua solicitação e poderá aceitar ou recusar. O vínculo só será criado depois do aceite.</p>
+      <label className="field-label">Mensagem opcional</label>
+      <textarea maxLength={600} value={requestMessage} onChange={e=>setRequestMessage(e.target.value)} placeholder="Ex.: Olá! Gostaria de treinar com você para melhorar minha força e condicionamento."/>
+      <small className="helper-text request-char-count">{requestMessage.length}/600</small>
+      <button className="primary-btn full" disabled={busy===requestTrainer.id} onClick={sendRequest}>{busy===requestTrainer.id?'Enviando...':'Enviar solicitação'} <Send size={17}/></button>
+    </div></div>}
   </div>
 }
-
 
 function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
   const [period, setPeriod] = useState('Dia')
@@ -696,10 +724,18 @@ function TrainerDashboard({ setPage, user, token, backend, onOpenStudent }) {
 function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
   const [invite, setInvite] = useState(false)
   const [busy,setBusy]=useState(false)
+  const [requestBusy,setRequestBusy]=useState('')
   const [error,setError]=useState('')
   const [inviteResult,setInviteResult]=useState(null)
+  const [linkRequests,setLinkRequests]=useState([])
   const feedback=useFeedback()
   const linkedStudents=backend.students || []
+
+  const loadRequests=async()=>{
+    try{setLinkRequests(await apiRequest('/trainer/link-requests',{token}))}
+    catch(e){setError(e.message)}
+  }
+  useEffect(()=>{loadRequests()},[token])
 
   const sendInvite=async()=>{
     setBusy(true);setError('')
@@ -710,14 +746,32 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
     }catch(e){setError(e.message)}finally{setBusy(false)}
   }
 
+  const respondRequest=async(request,decision)=>{
+    setRequestBusy(request.id);setError('')
+    try{
+      await apiRequest(`/trainer/link-requests/${request.id}/${decision}`,{token,method:'POST'})
+      await Promise.all([loadRequests(),refreshBackend()])
+      if(decision==='accept')feedback.success('Solicitação aceita',`${request.studentName} agora está vinculado a você.`,{key:`request-accepted:${request.id}`})
+      else feedback.info('Solicitação recusada',`A solicitação de ${request.studentName} foi encerrada.`,{key:`request-rejected:${request.id}`})
+    }catch(e){setError(e.message)}finally{setRequestBusy('')}
+  }
+
   return <div className="page-stack">
     <section className="page-heading action-heading">
-      <div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Convites, disponibilidade e treinos dos seus alunos.</p></div>
+      <div><span className="eyebrow">Gestão de alunos</span><h1>Seus alunos</h1><p>Solicitações, convites, disponibilidade e treinos dos seus alunos.</p></div>
       <button className="primary-btn" onClick={()=>setInvite(true)}><Share2 size={18}/> Convidar aluno</button>
     </section>
 
     {error && <div className="app-error-banner">{error}</div>}
 
+    {linkRequests.length>0&&<section className="panel link-request-panel">
+      <div className="panel-head"><div><h3>Solicitações de vínculo</h3><p>Alunos que encontraram seu perfil público e querem treinar com você.</p></div><Badge tone="light">{linkRequests.length}</Badge></div>
+      <div className="link-request-list">{linkRequests.map(request=><article className="link-request-row" key={request.id}>
+        <Avatar initials={initialsOf(request.studentName)} size="md" src={request.studentAvatarUrl}/>
+        <div className="link-request-copy"><strong>{request.studentName}</strong><small>{request.studentEmail}</small>{request.message&&<p>“{request.message}”</p>}<span>{new Date(request.createdAt).toLocaleString('pt-BR')}</span></div>
+        <div className="link-request-actions"><button className="secondary-btn compact" disabled={requestBusy===request.id} onClick={()=>respondRequest(request,'reject')}>Recusar</button><button className="primary-btn compact" disabled={requestBusy===request.id} onClick={()=>respondRequest(request,'accept')}>{requestBusy===request.id?'Processando...':'Aceitar'}</button></div>
+      </article>)}</div>
+    </section>}
 
     <div className="toolbar"><div className="search-box"><Search size={18}/><input placeholder="Buscar aluno"/></div><button className="filter">Todos <ChevronDown size={15}/></button></div>
 
@@ -731,7 +785,7 @@ function Students({ setPage, token, backend, refreshBackend, onOpenStudent }) {
       <div className="routine-days mini-routine">{['D','S','T','Q','Q','S','S'].map((d,i)=><span key={i} className={st.availability?.includes(i)?'active':''}>{d}</span>)}</div>
       <div className="student-actions"><button onClick={(e)=>{e.stopPropagation();onOpenStudent(st.id)}}>Abrir perfil</button><button onClick={(e)=>{e.stopPropagation();setPage('builder')}}>Criar treino <ChevronRight size={15}/></button></div>
     </article>)}</div> : <section className="panel empty-state">
-      <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Gere um link de convite e peça para o aluno concluir o cadastro ou login pelo próprio link.</p>
+      <UsersRound size={30}/><h3>Nenhum aluno vinculado ainda</h3><p>Compartilhe um convite ou aceite uma solicitação enviada pelo seu perfil público.</p>
     </section>}
 
     {invite && <div className="modal-backdrop" onClick={()=>setInvite(false)}><div className="standard-modal invite-modal" onClick={e=>e.stopPropagation()}>
