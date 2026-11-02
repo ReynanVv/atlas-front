@@ -73,7 +73,7 @@ button{color:inherit}
 .signup-copy{text-align:center;color:var(--muted);font-size:13px;margin-top:26px}
 .signup-copy button,.text-btn{border:0;background:transparent;color:var(--primary-deep);font-weight:800}
 .app-shell{min-height:100vh}
-.topbar{height:74px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.topbar{height:86px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
 .topbar-actions{display:flex;align-items:center;gap:10px}
 .icon-btn{width:42px;height:42px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;place-items:center;position:relative}
 .notification-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:#CF6A65;right:9px;top:8px;border:1px solid #fff}
@@ -89,13 +89,13 @@ button{color:inherit}
 .profile-menu hr{border:0;border-top:1px solid var(--line);margin:5px 0}
 .avatar{border-radius:50%;display:grid;place-items:center;font-weight:800;background:linear-gradient(145deg,#E9ECF2,#B8E400);color:#0B1B3A;flex:none}
 .avatar-lg{width:72px;height:72px;font-size:20px}.avatar-md{width:46px;height:46px}.avatar-sm{width:36px;height:36px;font-size:11px}.avatar-xs{width:24px;height:24px;font-size:8px}
-.side-nav{position:fixed;left:0;top:74px;bottom:0;width:224px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;padding:20px 14px;z-index:40}
+.side-nav{position:fixed;left:0;top:86px;bottom:0;width:224px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;padding:20px 14px;z-index:40}
 .side-nav nav{display:flex;flex-direction:column;gap:5px}
 .side-nav button{height:44px;border:0;background:transparent;border-radius:11px;display:flex;align-items:center;gap:11px;padding:0 12px;font-weight:600;color:#667078}
 .side-nav button.active{background:var(--surface-green);color:var(--ink-2);font-weight:800}
 .side-nav button.active svg{color:var(--primary-deep)}
 .side-settings{border-top:1px solid var(--line)!important;border-radius:0!important}
-.app-main{margin-left:224px;padding:106px 32px 50px;min-height:100vh}
+.app-main{margin-left:224px;padding:118px 32px 50px;min-height:100vh}
 .page-stack{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 .welcome-row,.action-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
 .welcome-row h1,.page-heading h1{font-size:32px;letter-spacing:-1.2px;margin:6px 0 5px}.welcome-row p,.page-heading p{color:var(--muted)}
@@ -178,7 +178,7 @@ button{color:inherit}
   .workout-table-head,.workout-table-row{grid-template-columns:1.5fr 1fr .8fr .6fr 30px}.workout-table-head span:nth-child(3),.workout-table-row>span:nth-child(3){display:none}
 }
 @media (max-width:680px){
-  .topbar{height:66px;padding:0 15px}.topbar .logo{font-size:21px}.topbar .logo-mark{width:34px;height:34px}.icon-btn{display:none}.profile-trigger>span{display:none}.profile-trigger{gap:4px}.app-main{padding:84px 13px 88px}
+  .topbar{height:76px;padding:0 15px}.topbar .logo{font-size:21px}.topbar .logo-mark{width:34px;height:34px}.icon-btn{display:none}.profile-trigger>span{display:none}.profile-trigger{gap:4px}.app-main{padding:94px 13px 88px}
   .page-stack{gap:16px}.welcome-row,.action-heading,.workout-header{align-items:flex-start;flex-direction:column}.welcome-row h1,.page-heading h1{font-size:26px}.streak-card{display:none}
   .today-main{padding:22px}.today-main h2{font-size:25px}.today-main .primary-btn{width:100%;margin-top:2px}.coach-line{margin:16px 0}.today-meta{gap:8px}
   .week-strip{gap:5px}.day{height:69px;border-radius:12px}.day strong{font-size:14px}
@@ -1496,9 +1496,9 @@ button{color:inherit}
 }
 .logo-image{
   display:block;
-  height:52px;
+  height:66px;
   width:auto;
-  max-width:210px;
+  max-width:260px;
   object-fit:contain;
   background:transparent;
 }
@@ -1507,22 +1507,22 @@ button{color:inherit}
   background:transparent;
 }
 .logo.compact .logo-image{
-  height:42px;
+  height:50px;
 }
 .auth-logo .logo-image{
-  height:64px;
-  max-width:250px;
+  height:78px;
+  max-width:300px;
 }
 .session-restore-card .logo-image{
-  height:60px;
+  height:72px;
 }
 @media(max-width:680px){
   .topbar .logo-image{
-    height:44px;
-    max-width:170px;
+    height:54px;
+    max-width:205px;
   }
   .auth-logo .logo-image{
-    height:54px;
-    max-width:210px;
+    height:64px;
+    max-width:245px;
   }
 }
