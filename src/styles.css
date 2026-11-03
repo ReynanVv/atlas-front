@@ -1629,3 +1629,81 @@ button{color:inherit}
   .story-exercise-body{padding-left:14px;padding-right:14px}
   .story-summary-actions{grid-template-columns:1fr}
 }
+
+
+/* In-place workout pause */
+.story-pause-overlay{
+  position:fixed;
+  inset:0;
+  z-index:80;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(3,10,19,.78);
+  backdrop-filter:blur(12px);
+}
+.story-pause-card{
+  width:min(430px,100%);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px;
+  background:#0F1D2E;
+  color:#fff;
+  padding:28px;
+  text-align:center;
+  box-shadow:0 28px 80px rgba(0,0,0,.36);
+}
+.story-pause-icon{
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  margin:0 auto 16px;
+  background:rgba(184,228,0,.12);
+  color:#B8E400;
+}
+.story-pause-card .eyebrow{color:#B8E400}
+.story-pause-card h2{
+  margin:7px 0 8px;
+  font-size:32px;
+  letter-spacing:-1px;
+}
+.story-pause-card>p{
+  margin:0 auto;
+  max-width:340px;
+  color:#AEB7C0;
+  font-size:12px;
+  line-height:1.6;
+}
+.story-pause-context{
+  margin:20px 0 16px;
+  padding:13px 15px;
+  border-radius:14px;
+  background:#13243A;
+  border:1px solid rgba(255,255,255,.08);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.story-pause-context span{
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:#B8E400;
+  font-weight:900;
+}
+.story-pause-context strong{
+  font-size:13px;
+}
+.story-resume-btn{
+  width:100%;
+}
+@media(max-width:680px){
+  .story-pause-overlay{
+    padding:18px;
+  }
+  .story-pause-card{
+    padding:24px 20px;
+    border-radius:22px;
+  }
+}
