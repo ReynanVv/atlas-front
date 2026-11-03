@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
-  ChevronDown, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
+  ChevronDown, ChevronLeft, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
   Home, LineChart, ListChecks, Lock, LogIn, LogOut, Mail, Menu, MessageCircle, MoreHorizontal, Pencil,
-  Play, Plus, Search, Send, Settings, Share2, Sparkles, Star, TimerReset, Trophy,
+  Pause, Play, Plus, RotateCcw, Search, Send, Settings, Share2, SkipForward, Sparkles, Star, TimerReset, Trophy,
   Upload, Download, UserMinus, UserPlus, UserRound, UsersRound, Video, X, Zap
 } from 'lucide-react'
 import { apiBlob, apiRequest, fileToDataUrl, readStoredToken, storeToken } from './lib/api.js'
@@ -417,24 +417,29 @@ function StudentHome({ setPage, token, user, backend, refreshBackend, onOpenWork
 function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '', refreshBackend }) {
   const prescriptions=workoutPrescriptions(workout)
   const [prescriptionId,setPrescriptionId]=useState(initialPrescriptionId||prescriptions[0]?.id||'')
-  const [timer,setTimer]=useState(false)
-  const [timerSeconds,setTimerSeconds]=useState(90)
-  const [timerRunning,setTimerRunning]=useState(false)
-  const [openExercise,setOpenExercise]=useState(null)
   const [session,setSession]=useState(null)
   const [drafts,setDrafts]=useState({})
   const [saved,setSaved]=useState({})
+  const [currentStep,setCurrentStep]=useState(0)
+  const [restMode,setRestMode]=useState(false)
+  const [timerSeconds,setTimerSeconds]=useState(0)
+  const [timerRunning,setTimerRunning]=useState(false)
+  const [showSummary,setShowSummary]=useState(false)
+  const [showNote,setShowNote]=useState(false)
+  const [touchStart,setTouchStart]=useState(null)
   const [loading,setLoading]=useState(false)
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
   const [finalNotes,setFinalNotes]=useState('')
   const [videoSrc,setVideoSrc]=useState('')
-  const [videoTitle,setVideoTitle]=useState('')
+  const [videoLoading,setVideoLoading]=useState(false)
   const feedback=useFeedback()
   const prescription=prescriptions.find(p=>p.id===prescriptionId)||null
 
-  useEffect(()=>{if(initialPrescriptionId)setPrescriptionId(initialPrescriptionId);else if(prescriptions.length===1)setPrescriptionId(prescriptions[0].id)},[workout?.id,initialPrescriptionId])
-  useEffect(()=>{if(!timer||!timerRunning)return;if(timerSeconds<=0){setTimerRunning(false);return}const id=setInterval(()=>setTimerSeconds(v=>Math.max(0,v-1)),1000);return()=>clearInterval(id)},[timer,timerRunning,timerSeconds])
+  useEffect(()=>{
+    if(initialPrescriptionId)setPrescriptionId(initialPrescriptionId)
+    else if(prescriptions.length===1)setPrescriptionId(prescriptions[0].id)
+  },[workout?.id,initialPrescriptionId])
 
   useEffect(()=>{
     let cancelled=false
@@ -446,53 +451,212 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
         const started=latest&&!latest.completedAt?latest:await apiRequest(`/workouts/${workout.id}/start`,{token,method:'POST',body:{prescriptionId}})
         const data=await apiRequest(`/sessions/${started.id}`,{token})
         if(cancelled)return
-        setSession(data);setOpenExercise(data.exercises?.[0]?.id||null);setFinalNotes(data.notes||'')
-        const nextDrafts={},nextSaved={}
-        for(const ex of data.exercises||[])for(let n=1;n<=ex.sets;n++){const log=(data.logs||[]).find(item=>item.exerciseId===ex.id&&item.setNumber===n);const key=`${ex.id}:${n}`;nextDrafts[key]={reps:log?.reps??ex.reps,weight:log?.weight??ex.suggestedWeight,notes:log?.notes||''};if(log?.completed)nextSaved[key]=true}
-        setDrafts(nextDrafts);setSaved(nextSaved)
-      }catch(e){if(!cancelled)setError(e.message)}finally{if(!cancelled)setLoading(false)}
+        const nextDrafts={},nextSaved={},flat=[]
+        for(const ex of data.exercises||[]){
+          for(let n=1;n<=ex.sets;n++){
+            const log=(data.logs||[]).find(item=>item.exerciseId===ex.id&&item.setNumber===n)
+            const key=`${ex.id}:${n}`
+            nextDrafts[key]={reps:log?.reps??ex.reps,weight:log?.weight??ex.suggestedWeight,notes:log?.notes||''}
+            if(log?.completed)nextSaved[key]=true
+            flat.push(key)
+          }
+        }
+        const firstPending=flat.findIndex(key=>!nextSaved[key])
+        setSession(data)
+        setDrafts(nextDrafts)
+        setSaved(nextSaved)
+        setCurrentStep(firstPending<0?Math.max(0,flat.length-1):firstPending)
+        setShowSummary(firstPending<0&&flat.length>0)
+        setFinalNotes(data.notes||'')
+      }catch(e){if(!cancelled)setError(e.message)}
+      finally{if(!cancelled)setLoading(false)}
     }
-    loadSession();return()=>{cancelled=true}
+    loadSession()
+    return()=>{cancelled=true}
   },[workout?.id,prescriptionId])
 
-  const saveSet=async(exerciseId,setNumber)=>{
-    if(!session)return
-    const key=`${exerciseId}:${setNumber}`;const draft=drafts[key]||{}
-    setBusy(key);setError('')
-    try{await apiRequest(`/sessions/${session.id}/exercises/${exerciseId}/sets/${setNumber}`,{token,method:'PUT',body:{reps:Number(draft.reps)||0,weight:Number(draft.weight)||0,notes:draft.notes||''}});setSaved(v=>({...v,[key]:true}))}
-    catch(e){setError(e.message)}finally{setBusy('')}
+  const exercises=session?.exercises||[]
+  const steps=exercises.flatMap((exercise,exerciseIndex)=>
+    Array.from({length:Number(exercise.sets||0)},(_,i)=>({
+      key:`${exercise.id}:${i+1}`,
+      exercise,
+      exerciseIndex,
+      setNumber:i+1,
+    }))
+  )
+  const step=steps[currentStep]||null
+  const activeExercise=step?.exercise||null
+  const savedCount=Object.values(saved).filter(Boolean).length
+  const totalSets=steps.length
+  const percent=totalSets?Math.round(savedCount/totalSets*100):0
+
+  useEffect(()=>{
+    let cancelled=false
+    let blobUrl=''
+    const loadVideo=async()=>{
+      setVideoSrc('')
+      if(!activeExercise)return
+      if(activeExercise.videoUrl){setVideoSrc(activeExercise.videoUrl);return}
+      if(!activeExercise.exerciseId)return
+      setVideoLoading(true)
+      try{
+        const blob=await apiBlob(`/exercises/${activeExercise.exerciseId}/video`,token)
+        if(cancelled)return
+        blobUrl=URL.createObjectURL(blob)
+        setVideoSrc(blobUrl)
+      }catch{
+        if(!cancelled)setVideoSrc('')
+      }finally{
+        if(!cancelled)setVideoLoading(false)
+      }
+    }
+    loadVideo()
+    return()=>{cancelled=true;if(blobUrl)URL.revokeObjectURL(blobUrl)}
+  },[activeExercise?.id,activeExercise?.videoUrl,activeExercise?.exerciseId,token])
+
+  useEffect(()=>{
+    if(!restMode||!timerRunning)return
+    if(timerSeconds<=0){
+      setTimerRunning(false)
+      setRestMode(false)
+      setCurrentStep(v=>Math.min(steps.length-1,v+1))
+      return
+    }
+    const id=setInterval(()=>setTimerSeconds(v=>Math.max(0,v-1)),1000)
+    return()=>clearInterval(id)
+  },[restMode,timerRunning,timerSeconds,steps.length])
+
+  const updateDraft=(key,field,value)=>{
+    setDrafts(v=>({...v,[key]:{...v[key],[field]:value}}))
+    setSaved(v=>({...v,[key]:false}))
   }
-  const finish=async()=>{if(!session)return;setBusy('finish');setError('');try{await apiRequest(`/sessions/${session.id}/complete`,{token,method:'POST',body:{notes:finalNotes}});await refreshBackend();feedback.success('Prescrição concluída','Sua execução foi salva no histórico.',{key:'workout-completed'});setPage('home')}catch(e){setError(e.message)}finally{setBusy('')}}
-  const openTimer=seconds=>{setTimerSeconds(Math.max(0,Number(seconds)||90));setTimerRunning(true);setTimer(true)}
-  const closeVideo=()=>{if(videoSrc.startsWith('blob:'))URL.revokeObjectURL(videoSrc);setVideoSrc('');setVideoTitle('')}
-  const playExerciseVideo=async ex=>{setError('');try{closeVideo();if(ex.videoUrl){setVideoSrc(ex.videoUrl);setVideoTitle(ex.name);return}if(ex.exerciseId){const blob=await apiBlob(`/exercises/${ex.exerciseId}/video`,token);setVideoSrc(URL.createObjectURL(blob));setVideoTitle(ex.name);return}setError('Este exercício não possui vídeo cadastrado.')}catch(e){setError(e.message)}}
+
+  const completeSet=async()=>{
+    if(!session||!step)return
+    const draft=drafts[step.key]||{}
+    setBusy(step.key);setError('')
+    try{
+      await apiRequest(`/sessions/${session.id}/exercises/${step.exercise.id}/sets/${step.setNumber}`,{
+        token,method:'PUT',
+        body:{reps:Number(draft.reps)||0,weight:Number(draft.weight)||0,notes:draft.notes||''}
+      })
+      setSaved(v=>({...v,[step.key]:true}))
+      if(currentStep>=steps.length-1){
+        setShowSummary(true)
+        return
+      }
+      const rest=Math.max(0,Number(step.exercise.restSeconds)||0)
+      if(rest){
+        setTimerSeconds(rest)
+        setTimerRunning(true)
+        setRestMode(true)
+      }else{
+        setCurrentStep(v=>Math.min(steps.length-1,v+1))
+      }
+    }catch(e){setError(e.message)}
+    finally{setBusy('')}
+  }
+
+  const finish=async()=>{
+    if(!session)return
+    setBusy('finish');setError('')
+    try{
+      await apiRequest(`/sessions/${session.id}/complete`,{token,method:'POST',body:{notes:finalNotes}})
+      await refreshBackend()
+      feedback.success('Treino concluído','Sua execução foi salva no histórico.',{key:'workout-completed'})
+      setPage('home')
+    }catch(e){setError(e.message)}
+    finally{setBusy('')}
+  }
+
+  const pauseWorkout=()=>{
+    feedback.info('Treino pausado','Seu progresso salvo continua aqui para você retomar depois.',{key:'workout-paused'})
+    setPage('home')
+  }
+
+  const goToStep=index=>{
+    if(!steps.length)return
+    setRestMode(false);setTimerRunning(false);setShowSummary(false)
+    setCurrentStep(Math.max(0,Math.min(steps.length-1,index)))
+  }
+
+  const nextStep=()=>{
+    if(currentStep<steps.length-1)goToStep(currentStep+1)
+    else if(savedCount===totalSets)setShowSummary(true)
+  }
+
+  const previousStep=()=>goToStep(currentStep-1)
+
+  const onTouchEnd=e=>{
+    if(touchStart===null||restMode||showSummary)return
+    const diff=e.changedTouches[0].clientX-touchStart
+    setTouchStart(null)
+    if(Math.abs(diff)<55)return
+    if(diff>0)previousStep()
+    else nextStep()
+  }
+
+  const timerText=`${String(Math.floor(timerSeconds/60)).padStart(2,'0')}:${String(timerSeconds%60).padStart(2,'0')}`
+  const nextStepData=steps[Math.min(steps.length-1,currentStep+1)]
+  const currentExerciseSetCount=activeExercise?Number(activeExercise.sets||0):0
+  const allSaved=totalSets>0&&savedCount===totalSets
 
   if(!workout)return <div className="page-stack"><button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar</button><section className="panel empty-state"><h2>Nenhum treino selecionado</h2></section></div>
   if(!prescriptionId&&prescriptions.length>1)return <div className="page-stack"><button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar</button><section className="page-heading"><span className="eyebrow">{workout.name}</span><h1>Qual prescrição você vai executar?</h1></section><div className="prescription-choice-grid">{prescriptions.map(p=><button className="panel" key={p.id} onClick={()=>setPrescriptionId(p.id)}><Dumbbell size={25}/><strong>{p.name}</strong><span>{p.exercises?.length||0} exercícios · {p.estimatedMinutes||0} min</span></button>)}</div></div>
-  if(loading)return <div className="page-stack"><section className="panel empty-state"><Dumbbell size={30}/><h2>Preparando prescrição...</h2></section></div>
+  if(loading)return <div className="workout-story-loading"><Dumbbell size={34}/><h2>Preparando seu treino...</h2></div>
   if(error&&!session)return <div className="page-stack"><button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar</button><div className="app-error-banner">{error}</div></div>
 
-  const sessionExercises=session?.exercises||[]
-  const totalSets=sessionExercises.reduce((sum,ex)=>sum+Number(ex.sets||0),0)
-  const savedCount=Object.values(saved).filter(Boolean).length
-  const exerciseComplete=ex=>Array.from({length:ex.sets},(_,i)=>saved[`${ex.id}:${i+1}`]).every(Boolean)
-  const timerText=`${String(Math.floor(timerSeconds/60)).padStart(2,'0')}:${String(timerSeconds%60).padStart(2,'0')}`
+  return <div className="workout-story" onTouchStart={e=>setTouchStart(e.touches[0].clientX)} onTouchEnd={onTouchEnd}>
+    <header className="workout-story-top">
+      <div className="story-progress-bars">{steps.map((item,index)=><button key={item.key} aria-label={`Ir para série ${index+1}`} onClick={()=>goToStep(index)} className={saved[item.key]?'done':index===currentStep&&!showSummary?'active':''}><i/></button>)}</div>
+      <div className="story-toolbar">
+        <button className="story-back" onClick={()=>setPage('home')}><ChevronLeft size={21}/><span>{workout.name}</span></button>
+        <div className="story-toolbar-actions"><span>{percent}%</span><button onClick={pauseWorkout}><Pause size={17}/> Pausar</button></div>
+      </div>
+    </header>
 
-  return <div className="page-stack">
-    <button className="back-link" onClick={()=>setPage('home')}><ArrowLeft size={17}/> Voltar ao início</button>
-    {error&&<div className="app-error-banner">{error}</div>}
-    <section className="workout-header"><div><div className="today-meta"><Badge>Em andamento</Badge><span><Dumbbell size={15}/> {prescription?.name||session?.prescriptionName}</span><span><Clock3 size={14}/> {prescription?.estimatedMinutes||session?.estimatedMinutes||0} min</span></div><h1>{workout.name}</h1><p>{prescription?.notes||workout.notes||workout.description||'Complete cada série e registre o que realmente executou.'}</p></div><button className="secondary-btn" onClick={()=>openTimer(90)}><TimerReset size={18}/> Descanso</button></section>
-    <div className="workout-progress"><div><span>Progresso da prescrição</span><strong>{savedCount}/{totalSets} séries</strong></div><div className="bar"><i style={{width:`${totalSets?savedCount/totalSets*100:0}%`}}></i></div></div>
-    <div className="exercise-stack">{sessionExercises.map((ex,idx)=><section key={ex.id} className={`exercise-card ${exerciseComplete(ex)?'completed':''}`}><button className="exercise-summary" onClick={()=>setOpenExercise(openExercise===ex.id?null:ex.id)}><span className="exercise-index">{exerciseComplete(ex)?<Check size={17}/>:idx+1}</span><div><strong>{ex.name}</strong><small>{ex.sets} séries · {ex.reps} reps · {ex.restSeconds}s descanso</small></div>{(ex.videoUrl||ex.exerciseId)&&<span className="video-icon"><Video size={18}/></span>}<ChevronDown size={18} className={openExercise===ex.id?'rotate':''}/></button>
-      {openExercise===ex.id&&<div className="exercise-detail">{ex.notes&&<div className="exercise-prescription-note"><strong>Orientação do treinador</strong><p>{ex.notes}</p></div>}<div className="exercise-detail-actions">{(ex.videoUrl||ex.exerciseId)&&<button className="secondary-btn compact" onClick={()=>playExerciseVideo(ex)}><Video size={16}/> Ver execução</button>}<button className="secondary-btn compact" onClick={()=>openTimer(ex.restSeconds)}><TimerReset size={16}/> Descanso {ex.restSeconds}s</button></div><div className="set-table set-table-notes"><div className="set-row header"><span>Série</span><span>Carga</span><span>Reps</span><span>Observação</span><span></span></div>{Array.from({length:ex.sets},(_,i)=>i+1).map(n=>{const key=`${ex.id}:${n}`;const draft=drafts[key]||{};return <div className={`set-row ${saved[key]?'set-row-saved':''}`} key={n}><strong>{n}</strong><input type="number" step="0.5" value={draft.weight??''} onChange={e=>{setDrafts(v=>({...v,[key]:{...v[key],weight:e.target.value}}));setSaved(v=>({...v,[key]:false}))}}/><input type="number" value={draft.reps??''} onChange={e=>{setDrafts(v=>({...v,[key]:{...v[key],reps:e.target.value}}));setSaved(v=>({...v,[key]:false}))}}/><input className="set-note-input" value={draft.notes??''} onChange={e=>{setDrafts(v=>({...v,[key]:{...v[key],notes:e.target.value}}));setSaved(v=>({...v,[key]:false}))}} placeholder="Como foi?"/><button className="set-check" disabled={busy===key} onClick={()=>saveSet(ex.id,n)}>{busy===key?'…':<Check size={15}/>}</button></div>})}</div></div>}
-    </section>)}</div>
-    <section className="panel workout-final-notes"><label><span>Observação final</span><textarea value={finalNotes} onChange={e=>setFinalNotes(e.target.value)} placeholder="Dor, dificuldade ou comentário para o treinador..."/></label></section>
-    <button className="finish-btn" disabled={savedCount<totalSets||busy==='finish'} onClick={finish}>{busy==='finish'?'Finalizando...':'Finalizar prescrição'} <Trophy size={18}/></button>
-    {timer&&<div className="modal-backdrop" onClick={()=>setTimer(false)}><div className="timer-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setTimer(false)}><X size={18}/></button><span className="eyebrow">Tempo de descanso</span><div className={`timer-circle ${timerSeconds===0?'done':''}`}>{timerText}</div><p>{timerSeconds===0?'Descanso concluído.':'Mantenha o intervalo indicado na prescrição.'}</p><div className="timer-actions"><button onClick={()=>setTimerSeconds(v=>Math.max(0,v-15))}>-15s</button><button className="primary-btn" onClick={()=>setTimerRunning(v=>!v)}>{timerRunning?'Pausar':'Iniciar'}</button><button onClick={()=>setTimerSeconds(v=>v+15)}>+15s</button></div></div></div>}
-    {videoSrc&&<div className="modal-backdrop" onClick={closeVideo}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={closeVideo}><X size={18}/></button><h3>{videoTitle}</h3><video src={videoSrc} controls autoPlay playsInline/></div></div>}
+    {error&&<div className="story-error">{error}</div>}
+
+    {showSummary?<main className="story-summary">
+      <div className="story-summary-icon"><Trophy size={35}/></div>
+      <span className="eyebrow">Prescrição concluída</span>
+      <h1>Mandou bem.</h1>
+      <p>Você concluiu {savedCount} de {totalSets} séries. Revise se quiser ou finalize para salvar no histórico.</p>
+      <div className="story-summary-stats"><div><strong>{exercises.length}</strong><span>exercícios</span></div><div><strong>{totalSets}</strong><span>séries</span></div><div><strong>{percent}%</strong><span>progresso</span></div></div>
+      <label className="story-final-note"><span>Observação final <small>opcional</small></span><textarea value={finalNotes} onChange={e=>setFinalNotes(e.target.value)} placeholder="Algo que seu treinador precisa saber?"/></label>
+      <div className="story-summary-actions"><button className="secondary-btn" onClick={()=>goToStep(Math.max(0,steps.length-1))}><RotateCcw size={17}/> Revisar</button><button className="story-primary" disabled={!allSaved||busy==='finish'} onClick={finish}>{busy==='finish'?'Salvando...':'Finalizar treino'} <Trophy size={18}/></button></div>
+    </main>:restMode?<main className="story-rest">
+      <div className="story-rest-pulse"><TimerReset size={30}/></div>
+      <span className="eyebrow">Descanso</span>
+      <div className="story-rest-time">{timerText}</div>
+      <p>Respira. A próxima etapa entra automaticamente quando o tempo acabar.</p>
+      {nextStepData&&<div className="story-next-preview"><span>Próximo</span><strong>{nextStepData.exercise.name}</strong><small>Série {nextStepData.setNumber} de {nextStepData.exercise.sets}</small></div>}
+      <div className="story-rest-adjust"><button onClick={()=>setTimerSeconds(v=>Math.max(0,v-15))}>-15s</button><button className="story-rest-play" onClick={()=>setTimerRunning(v=>!v)}>{timerRunning?<><Pause size={18}/> Pausar</>:<><Play size={18}/> Continuar</>}</button><button onClick={()=>setTimerSeconds(v=>v+15)}>+15s</button></div>
+      <button className="story-skip-rest" onClick={()=>{setRestMode(false);setTimerRunning(false);nextStep()}}>Pular descanso <SkipForward size={16}/></button>
+    </main>:step?<main className="story-stage">
+      <section className="story-exercise-media">
+        {videoLoading?<div className="story-video-placeholder"><Video size={30}/><span>Carregando vídeo...</span></div>:videoSrc?<video key={videoSrc} src={videoSrc} controls playsInline loop preload="metadata"/>:<div className="story-video-placeholder"><Dumbbell size={34}/><strong>{activeExercise.name}</strong><span>Sem vídeo cadastrado para este exercício.</span></div>}
+        <div className="story-media-overlay"><span>Exercício {step.exerciseIndex+1} de {exercises.length}</span>{activeExercise.notes&&<p>{activeExercise.notes}</p>}</div>
+      </section>
+
+      <section className="story-exercise-body">
+        <div className="story-exercise-title"><div><span className="eyebrow">Série {step.setNumber} de {currentExerciseSetCount}</span><h1>{activeExercise.name}</h1></div>{saved[step.key]&&<span className="story-saved"><Check size={16}/> Salva</span>}</div>
+        <p className="story-prescription-line">{activeExercise.reps} reps prescritas · {activeExercise.restSeconds||0}s de descanso</p>
+
+        <div className="story-input-grid">
+          <label><span>Carga <small>kg</small></span><input inputMode="decimal" type="number" step="0.5" value={drafts[step.key]?.weight??''} onChange={e=>updateDraft(step.key,'weight',e.target.value)}/></label>
+          <label><span>Repetições</span><input inputMode="numeric" type="number" value={drafts[step.key]?.reps??''} onChange={e=>updateDraft(step.key,'reps',e.target.value)}/></label>
+        </div>
+
+        <button className="story-note-toggle" onClick={()=>setShowNote(v=>!v)}>{showNote?'Ocultar observação':'Adicionar observação'} <ChevronDown size={16} className={showNote?'rotate':''}/></button>
+        {showNote&&<textarea className="story-set-note" value={drafts[step.key]?.notes??''} onChange={e=>updateDraft(step.key,'notes',e.target.value)} placeholder="Dor, dificuldade, ajuste de execução..."/>}
+
+        <button className="story-primary story-complete-set" disabled={busy===step.key} onClick={completeSet}>{busy===step.key?'Salvando...':saved[step.key]?'Salvar alterações':'Concluir série'} <Check size={19}/></button>
+        <div className="story-navigation"><button disabled={currentStep===0} onClick={previousStep}><ChevronLeft size={18}/> Anterior</button><span>{currentStep+1}/{totalSets}</span><button disabled={currentStep>=steps.length-1} onClick={nextStep}>Pular <SkipForward size={17}/></button></div>
+      </section>
+    </main>:<main className="story-summary"><h2>Nenhuma série encontrada.</h2></main>}
   </div>
 }
-
 function StudentHistory({ backend }) {
   const sessions=backend.progress?.sessions || []
   const workouts=backend.workouts || []
@@ -1371,11 +1535,12 @@ function AppShell() {
       <Messages trainer token={token} backend={backend}/>
   }
 
-  return <div className="app-shell">
-    <Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onOpenAccount={()=>setPage('account')}/>
-    <SideNav profile={profile} page={page} setPage={setPage}/>
-    <main className="app-main">{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
-    <BottomNav profile={profile} page={page} setPage={setPage}/>
+  const immersiveWorkout=profile==='student'&&page==='workout'
+  return <div className={`app-shell ${immersiveWorkout?'workout-immersive-shell':''}`}>
+    {!immersiveWorkout&&<Topbar profile={profile} user={user} token={token} onUserChange={handleUserChange} onOpenAccount={()=>setPage('account')}/>}
+    {!immersiveWorkout&&<SideNav profile={profile} page={page} setPage={setPage}/>}
+    <main className={immersiveWorkout?'app-main workout-immersive-main':'app-main'}>{backendError&&<div className="app-error-banner">{backendError}</div>}{content}</main>
+    {!immersiveWorkout&&<BottomNav profile={profile} page={page} setPage={setPage}/>}
   </div>
 }
 
