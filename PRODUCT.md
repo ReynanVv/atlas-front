@@ -54,3 +54,5 @@ Cobrança, marketplace, nutrição, wearables, prescrição automática por IA, 
 23. O professor possui uma página privada de avaliações recebidas com nota média, total, distribuição por estrelas e lista de avaliações/comentários dos alunos.
 
 24. A página Conta centraliza dados pessoais, visibilidade e sessão. A ação de sair fica nessa página, não no topo global da aplicação.
+
+25. A execução de treino é imersiva e sequencial: cada série funciona como uma etapa de progresso, com vídeo do exercício quando disponível, carga/repetições em foco, descanso automático entre séries, navegação para voltar/pular, e possibilidade de pausar o treino e retomar posteriormente sem perder o progresso já salvo.
