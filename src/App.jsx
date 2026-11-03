@@ -623,6 +623,20 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
 
     {error&&<div className="story-error">{error}</div>}
 
+    {workoutPaused&&<div className="story-pause-overlay" role="dialog" aria-modal="true" aria-label="Treino pausado">
+      <div className="story-pause-card">
+        <div className="story-pause-icon"><Pause size={30}/></div>
+        <span className="eyebrow">Treino pausado</span>
+        <h2>Fica por aqui.</h2>
+        <p>Nada avança enquanto estiver pausado. Sua série, o descanso e todo o progresso permanecem exatamente como estão.</p>
+        <div className="story-pause-context">
+          <span>{restMode?'Descanso atual':'Etapa atual'}</span>
+          <strong>{restMode?timerText:(activeExercise?(activeExercise.name+' · série '+(step?.setNumber||1)):'Treino')}</strong>
+        </div>
+        <button className="story-primary story-resume-btn" onClick={resumeWorkout}><Play size={19}/> Retomar treino</button>
+      </div>
+    </div>}
+
     {showSummary?<main className="story-summary">
       <div className="story-summary-icon"><Trophy size={35}/></div>
       <span className="eyebrow">Prescrição concluída</span>
