@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, Apple, ArrowLeft, BarChart3, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronLeft, ChevronRight, CirclePlus, Clock3, Dumbbell, Flame, History,
@@ -426,6 +426,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   const [timerRunning,setTimerRunning]=useState(false)
   const [showSummary,setShowSummary]=useState(false)
   const [showNote,setShowNote]=useState(false)
+  const [workoutPaused,setWorkoutPaused]=useState(false)
   const [touchStart,setTouchStart]=useState(null)
   const [loading,setLoading]=useState(false)
   const [busy,setBusy]=useState('')
@@ -433,6 +434,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   const [finalNotes,setFinalNotes]=useState('')
   const [videoSrc,setVideoSrc]=useState('')
   const [videoLoading,setVideoLoading]=useState(false)
+  const videoRef=useRef(null)
   const feedback=useFeedback()
   const prescription=prescriptions.find(p=>p.id===prescriptionId)||null
 
@@ -515,7 +517,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   },[activeExercise?.id,activeExercise?.videoUrl,activeExercise?.exerciseId,token])
 
   useEffect(()=>{
-    if(!restMode||!timerRunning)return
+    if(!restMode||!timerRunning||workoutPaused)return
     if(timerSeconds<=0){
       setTimerRunning(false)
       setRestMode(false)
@@ -524,7 +526,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
     }
     const id=setInterval(()=>setTimerSeconds(v=>Math.max(0,v-1)),1000)
     return()=>clearInterval(id)
-  },[restMode,timerRunning,timerSeconds,steps.length])
+  },[restMode,timerRunning,timerSeconds,steps.length,workoutPaused])
 
   const updateDraft=(key,field,value)=>{
     setDrafts(v=>({...v,[key]:{...v[key],[field]:value}}))
@@ -570,8 +572,12 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   }
 
   const pauseWorkout=()=>{
-    feedback.info('Treino pausado','Seu progresso salvo continua aqui para você retomar depois.',{key:'workout-paused'})
-    setPage('home')
+    videoRef.current?.pause()
+    setWorkoutPaused(true)
+  }
+
+  const resumeWorkout=()=>{
+    setWorkoutPaused(false)
   }
 
   const goToStep=index=>{
@@ -588,7 +594,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
   const previousStep=()=>goToStep(currentStep-1)
 
   const onTouchEnd=e=>{
-    if(touchStart===null||restMode||showSummary)return
+    if(touchStart===null||restMode||showSummary||workoutPaused)return
     const diff=e.changedTouches[0].clientX-touchStart
     setTouchStart(null)
     if(Math.abs(diff)<55)return
@@ -635,7 +641,7 @@ function WorkoutExecution({ setPage, token, workout, initialPrescriptionId = '',
       <button className="story-skip-rest" onClick={()=>{setRestMode(false);setTimerRunning(false);nextStep()}}>Pular descanso <SkipForward size={16}/></button>
     </main>:step?<main className="story-stage">
       <section className="story-exercise-media">
-        {videoLoading?<div className="story-video-placeholder"><Video size={30}/><span>Carregando vídeo...</span></div>:videoSrc?<video key={videoSrc} src={videoSrc} controls playsInline loop preload="metadata"/>:<div className="story-video-placeholder"><Dumbbell size={34}/><strong>{activeExercise.name}</strong><span>Sem vídeo cadastrado para este exercício.</span></div>}
+        {videoLoading?<div className="story-video-placeholder"><Video size={30}/><span>Carregando vídeo...</span></div>:videoSrc?<video ref={videoRef} key={videoSrc} src={videoSrc} controls playsInline loop preload="metadata"/>:<div className="story-video-placeholder"><Dumbbell size={34}/><strong>{activeExercise.name}</strong><span>Sem vídeo cadastrado para este exercício.</span></div>}
         <div className="story-media-overlay"><span>Exercício {step.exerciseIndex+1} de {exercises.length}</span>{activeExercise.notes&&<p>{activeExercise.notes}</p>}</div>
       </section>
 
